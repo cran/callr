@@ -16,19 +16,22 @@ using the \code{::} notation. The environment of the function
 is set to \code{.GlobalEnv} before passing it to the child process.
 Because of this, it is good practice to create an anonymous
 function and pass that to \code{callr}, instead of passing
-a function object from a (base or other) package. In particular
-\preformatted{  r(.libPaths)} does not work, because it is
-defined in a special environment, but
-\preformatted{  r(function() .libPaths())} works just fine.}
+a function object from a (base or other) package. In particular\preformatted{r(.libPaths)
+}
 
-\item{args}{Arguments to pass to the function. Must be a list.
-vector.}
+does not work, because \code{.libPaths} is defined in a special
+environment, but\preformatted{r(function() .libPaths())
+}
+
+works just fine.}
+
+\item{args}{Arguments to pass to the function. Must be a list.}
 
 \item{libpath}{The library path.}
 
-\item{repos}{The \sQuote{repos} option. If \code{NULL}, then no
-\code{repos} option is set. This options is only used if
-\code{user_profile} or \code{system_profile} is set to \code{FALSE},
+\item{repos}{The \emph{repos} option. If \code{NULL}, then no
+\emph{repos} option is set. This options is only used if
+\code{user_profile} or \code{system_profile} is set \code{FALSE},
 as it is set using the system or the user profile.}
 
 \item{cmdargs}{Command line arguments to pass to the R process.
@@ -42,17 +45,18 @@ supplied function and some error handling code.}
 
 \item{env}{Environment variables to set for the child process.}
 
-\item{...}{Additional arguments are passed to \code{\link{r}}.}
+\item{...}{Additional arguments are passed to \code{\link[=r]{r()}}.}
 }
 \description{
-It tries to mimic a fresh R installation. In particular: \itemize{
+It tries to mimic a fresh R installation. In particular:
+\itemize{
 \item No library path setting.
 \item No CRAN(-like) repository is set.
 \item The system and user profiles are not run.
 }
 }
 \examples{
-
+\dontrun{
 # Compare to r()
 r(function() .libPaths())
 r_vanilla(function() .libPaths())
@@ -60,8 +64,8 @@ r_vanilla(function() .libPaths())
 r(function() getOption("repos"))
 r_vanilla(function() getOption("repos"))
 }
+}
 \seealso{
-Other callr functions: \code{\link{r_safe}},
+Other callr functions: \code{\link{r_copycat}},
   \code{\link{r}}
 }
-
