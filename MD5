@@ -1,7 +1,7 @@
-32c2bdef57982c3e75efa0c07f97d8d3 *DESCRIPTION
+0ab9104fce6b5245c2deb04111c68671 *DESCRIPTION
 09079911e7389192b5cd3b99be725742 *LICENSE
 be5669558cc5b592f254ca678f58ed9f *NAMESPACE
-416f080a8c55815418a5b8a4be2d3f3f *NEWS.md
+465167b45ae7ea4c41dd9150b0514576 *NEWS.md
 41bbee670560ed8e430961df42c0844f *R/check.R
 5485f8531f330ded670b2bb0b975382b *R/error.R
 0689fa10e51bc411b6dc51fe2075810d *R/eval-bg.R
@@ -52,7 +52,7 @@ f73c95c5caa25cf24c8fabdd44ae26de *man/rcmd_copycat.Rd
 650bef3bdd486a28306d18e16fd7072c *man/rcmd_process_options.Rd
 53f063f573f3fedb126751f74435d85a *man/rcmd_safe.Rd
 391977ac0fae1470e27418b12f06cf79 *man/run.Rd
-8aa15f76b03e593cb8e0564c4377d2d9 *src/Makevars
+c3ee1e625fa5d64d24ad9fe34301162b *src/Makevars
 6e692a2da6018d84d2cd246b57470827 *src/Makevars.win
 24cda6d6290f0781a88ed7d91b78119f *src/callr-connection.c
 6a244e16b2e6b530cef9c086c6949080 *src/callr-connection.h
@@ -70,6 +70,8 @@ d7d8e3686ab3d9eeb68d0797e869bf9b *src/supervisor/supervisor.c
 58b86db69f51b7b3357bdf2bf3408125 *src/test-connections.cpp
 c2cb0c30e10da611f9fbe56aea52f7a9 *src/test-runner.cpp
 229530620684f7cd1599e76f37ec7074 *src/tools/px.c
+e3e5171120150f55c8dfd691fe184cbf *src/tools/px.dSYM/Contents/Info.plist
+74a7147b9e78ade378b4fddb19fef50e *src/tools/px.dSYM/Contents/Resources/DWARF/px
 060fe1fdd40b7eb5951a4862e410e1d6 *src/unix/callr-unix.h
 f34babe01b50adb6828d8492610a37e0 *src/unix/callr.c
 9c13a29a3b473b53d18beff4ed102e73 *src/unix/childlist.c
@@ -108,5 +110,5 @@ e70bf1ae5b2f724a2969bc39f9f162b3 *tests/testthat/test-rcmd-bg.R
 fcc5640e866c27d5c98a50cec77af078 *tests/testthat/test-run.R
 31d761256f76ab206d5e199f7b5b0194 *tests/testthat/test-stress.R
 80fb13a15e78ee8c43d039a82101e7b4 *tests/testthat/test-timeout.R
-925d150156014d0fc5d2977759efbfb6 *tests/testthat/test-utils.R
+e088806ffab65cf412165d008209f02d *tests/testthat/test-utils.R
 57eb5727cc73643d3f626e3be6de8cc7 *tests/testthat/test-wait.R
