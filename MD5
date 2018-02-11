@@ -1,7 +1,7 @@
-0ab9104fce6b5245c2deb04111c68671 *DESCRIPTION
+52c8a26cde68e6e325751ba64fb86107 *DESCRIPTION
 09079911e7389192b5cd3b99be725742 *LICENSE
 be5669558cc5b592f254ca678f58ed9f *NAMESPACE
-465167b45ae7ea4c41dd9150b0514576 *NEWS.md
+fe531130bb43ba07b10b657897344d33 *NEWS.md
 41bbee670560ed8e430961df42c0844f *R/check.R
 5485f8531f330ded670b2bb0b975382b *R/error.R
 0689fa10e51bc411b6dc51fe2075810d *R/eval-bg.R
@@ -25,7 +25,7 @@ b0543b02fa9c2a36f75fa6f5669613ad *R/r-process.R
 d5bb0e7cff7c8cc38d0b8ec1981fc06c *R/rcmd-bg.R
 b7e89d9aab986720bc932cd55c5dda93 *R/rcmd-process.R
 05f4b7eddd12d946f86bc154c5451fdd *R/rcmd.R
-4e61d2fb4541cb3d0197b4081f4ece9d *R/result.R
+2d5e6251ecb8a84f7cb00310eb7854bf *R/result.R
 bfc94c8d88ef976dbd0f5fbda08188ce *R/run.R
 b4b40386d241ca8ecf4692258fb65dd7 *R/script.R
 f7e1a4d4b75813f901e0478bc8a82bce *R/setup.R
@@ -83,7 +83,7 @@ d82df1d547ebb057e6dfd65705e0c0f6 *src/win/callr-win.h
 4a08b71129f09d9c9aededb1b4783f79 *src/win/callr.c
 fa86ffc4bdd5ae2f96783368f10cd165 *src/win/cleanup.c
 c3aea3434f08482608083a41881256b1 *src/win/named_pipe.c
-d33384c6f421ca2623e448f03abdcc41 *src/win/stdio.c
+e6f069045a480ff3a3c3b43cd6bf36e8 *src/win/stdio.c
 b553418ae6becd32b4be7f3e7fa73b45 *tests/testthat.R
 b4e448e8600fa63f41cc30e5e784f75c *tests/testthat/fixtures/simple.txt
 5611cafeabacf0dd0b45b351dec3fe5e *tests/testthat/helper.R

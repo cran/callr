@@ -1,6 +1,6 @@
 Package: callr
 Title: Call R from R
-Version: 2.0.1
+Version: 2.0.2
 Author: Gábor Csárdi, Winston Chang
 Maintainer: Gábor Csárdi <csardi.gabor@gmail.com>
 Description: It is sometimes useful to perform a computation in a
@@ -16,6 +16,6 @@ Suggests: covr, testthat, withr
 LinkingTo: testthat
 Encoding: UTF-8
 NeedsCompilation: yes
-Packaged: 2018-01-30 11:56:21 UTC; gaborcsardi
+Packaged: 2018-02-11 01:57:14 UTC; gaborcsardi
 Repository: CRAN
-Date/Publication: 2018-01-30 17:16:53 UTC
+Date/Publication: 2018-02-11 14:18:29 UTC
