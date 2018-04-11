@@ -14,7 +14,7 @@
 #'                  echo_cmd = FALSE, supervise = FALSE,
 #'                  windows_verbatim_args = FALSE,
 #'                  windows_hide_window = FALSE,
-#'                  encoding = "")
+#'                  encoding = "", post_process = NULL)
 #'
 #' p$is_alive()
 #' p$signal(signal)
@@ -39,6 +39,8 @@
 #' p$read_all_error_lines()
 #'
 #' p$poll_io(timeout)
+#'
+#' p$get_result()
 #'
 #' print(p)
 #' ```
@@ -81,6 +83,9 @@
 #'     both streams in UTF-8 currently. If you want to read them
 #'     without any conversion, on all platforms, specify `"UTF-8"` as
 #'     encoding.
+#' * `post_process`: An optional function to run when the process has
+#'     finished. Currently it only runs if `$get_result()` is called.
+#'     It is only run once.
 #'
 #' @section Details:
 #' `$new()` starts a new process in the background, and then returns
@@ -105,12 +110,21 @@
 #' `$wait()` waits until the process finishes, or a timeout happens.
 #' Note that if the process never finishes, and the timeout is infinite
 #' (the default), then R will never regain control. It returns
-#' the process itself, invisibly.
+#' the process itself, invisibly. In some rare cases, `$wait()` might take
+#' a bit longer than specified to time out. This happens on Unix, when
+#' another package overwrites the processx SIGCHLD signal handler, after the
+#' processx process has started. One such package is parallel, if used
+#' with fork clusters, e.g. through `parallel::mcparallel()`.
 #'
 #' `$get_pid()` returns the process id of the process.
 #'
 #' `$get_exit_status` returns the exit code of the process if it has
-#' finished and `NULL` otherwise.
+#' finished and `NULL` otherwise. On Unix, in some rare cases, the exit
+#' status might be `NA`. This happens if another package (or R itself)
+#' overwrites the processx SIGCHLD handler, after the processx process
+#' has started. In these cases processx cannot determine the real exit
+#' status of the process. One such package is parallel, if used with
+#' fork clusters, e.g. through the `parallel::mcparallel()` function.
 #'
 #' `$restart()` restarts a process. It returns the process itself.
 #'
@@ -206,6 +220,10 @@
 #' the _Polling_ section, and see also the [poll()] function
 #' to poll on multiple processes.
 #'
+#' `$get_result()` returns the result of the post processesing function.
+#' It can only be called once the process has finished. If the process has
+#' no post-processing function, then `NULL` is returned.
+#'
 #' `print(p)` or `p$print()` shows some information about the
 #' process on the screen, whether it is running and it's process id, etc.
 #'
@@ -248,11 +266,11 @@ process <- R6Class(
     initialize = function(command = NULL, args = character(),
       stdout = NULL, stderr = NULL, cleanup = TRUE,
       echo_cmd = FALSE, supervise = FALSE, windows_verbatim_args = FALSE,
-      windows_hide_window = FALSE, encoding = "")
+      windows_hide_window = FALSE, encoding = "", post_process = NULL)
       process_initialize(self, private, command, args,
                          stdout, stderr, cleanup, echo_cmd, supervise,
                          windows_verbatim_args, windows_hide_window,
-                         encoding),
+                         encoding, post_process),
 
     kill = function(grace = 0.1)
       process_kill(self, private, grace),
@@ -338,7 +356,10 @@ process <- R6Class(
       process_get_error_file(self, private),
 
     poll_io = function(timeout)
-      process_poll_io(self, private, timeout)
+      process_poll_io(self, private, timeout),
+
+    get_result = function()
+      process_get_result(self, private)
   ),
 
   private = list(
@@ -367,6 +388,10 @@ process <- R6Class(
     stderr_pipe = NULL,
 
     encoding = "",
+
+    post_process = NULL,
+    post_process_result = NULL,
+    post_process_done = FALSE,
 
     get_short_name = function()
       process_get_short_name(self, private)
@@ -411,7 +436,8 @@ process_restart <- function(self, private) {
     private$supervised,
     private$windows_verbatim_args,
     private$windows_hide_window,
-    private$encoding
+    private$encoding,
+    private$post_process
   )
 
   invisible(self)
@@ -491,4 +517,13 @@ process_supervise <- function(self, private, status) {
     supervisor_unwatch_pid(self$get_pid())
     private$supervised <- FALSE
   }
+}
+
+process_get_result <- function(self, private) {
+  if (self$is_alive()) stop("Process is still alive")
+  if (!private$post_process_done && is.function(private$post_process)) {
+    private$post_process_result <- private$post_process()
+    private$post_process_done <- TRUE
+  }
+  private$post_process_result
 }

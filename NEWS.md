@@ -1,4 +1,13 @@
 
+# 2.0.3
+
+* The default behavior on error can be set now with the `callr.error`
+option.
+
+* Better error message if the child R process crashes or gets killed. (#41)
+
+* `r_bg` and `rcmd_bg` now have the `supervise` option (#45).
+
 # 2.0.2
 
 * Fix a bug with R-devel, caused by the change on 2018-02-08:
@@ -11,7 +20,7 @@
 
 # 2.0.1
 
-* Fix compilation issues on CRAN's Solarix machine
+* Fix compilation issues on CRAN's Solaris machine
 
 * Fix a test failure on CRAN's macOS machine
 

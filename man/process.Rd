@@ -16,7 +16,7 @@ streams. The process id is then used to manage the process.
                  echo_cmd = FALSE, supervise = FALSE,
                  windows_verbatim_args = FALSE,
                  windows_hide_window = FALSE,
-                 encoding = "")
+                 encoding = "", post_process = NULL)
 
 p$is_alive()
 p$signal(signal)
@@ -41,6 +41,8 @@ p$read_all_output_lines()
 p$read_all_error_lines()
 
 p$poll_io(timeout)
+
+p$get_result()
 
 print(p)
 }
@@ -86,6 +88,9 @@ used. Note that \code{callr} always reencodes the output of
 both streams in UTF-8 currently. If you want to read them
 without any conversion, on all platforms, specify \code{"UTF-8"} as
 encoding.
+\item \code{post_process}: An optional function to run when the process has
+finished. Currently it only runs if \code{$get_result()} is called.
+It is only run once.
 }
 }
 
@@ -113,12 +118,21 @@ already finished/dead when \code{callr} tried to kill it).
 \code{$wait()} waits until the process finishes, or a timeout happens.
 Note that if the process never finishes, and the timeout is infinite
 (the default), then R will never regain control. It returns
-the process itself, invisibly.
+the process itself, invisibly. In some rare cases, \code{$wait()} might take
+a bit longer than specified to time out. This happens on Unix, when
+another package overwrites the processx SIGCHLD signal handler, after the
+processx process has started. One such package is parallel, if used
+with fork clusters, e.g. through \code{parallel::mcparallel()}.
 
 \code{$get_pid()} returns the process id of the process.
 
 \code{$get_exit_status} returns the exit code of the process if it has
-finished and \code{NULL} otherwise.
+finished and \code{NULL} otherwise. On Unix, in some rare cases, the exit
+status might be \code{NA}. This happens if another package (or R itself)
+overwrites the processx SIGCHLD handler, after the processx process
+has started. In these cases processx cannot determine the real exit
+status of the process. One such package is parallel, if used with
+fork clusters, e.g. through the \code{parallel::mcparallel()} function.
 
 \code{$restart()} restarts a process. It returns the process itself.
 
@@ -213,6 +227,10 @@ this returns the absolute path to the file. If \code{stderr} was \code{"|"} or
 \code{$poll_io()} polls the process's connections for I/O. See more in
 the \emph{Polling} section, and see also the \code{\link[=poll]{poll()}} function
 to poll on multiple processes.
+
+\code{$get_result()} returns the result of the post processesing function.
+It can only be called once the process has finished. If the process has
+no post-processing function, then \code{NULL} is returned.
 
 \code{print(p)} or \code{p$print()} shows some information about the
 process on the screen, whether it is running and it's process id, etc.

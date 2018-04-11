@@ -69,7 +69,7 @@
 #' @param block_callback A function to call for each block of the standard
 #'   output and standard error. This callback is not line oriented, i.e.
 #'   multiple lines or half a line can be passed to the callback.
-#' @param spinner Whether to snow a calming spinner on the screen while
+#' @param spinner Whether to show a calming spinner on the screen while
 #'   the child R session is running. By default it is shown if
 #'   `show = TRUE` and the R session is interactive.
 #' @param system_profile Whether to use the system profile file.
@@ -100,6 +100,9 @@
 #'   to returning the complete call stack, it also start up a debugger
 #'   in the child call stack, via [utils::debugger()].
 #'
+#' The default error behavior can be also set using the `callr.error`
+#' option. This is useful to debug code that uses `callr`.
+#'
 #' @family callr functions
 #' @examples
 #' \dontrun{
@@ -117,7 +120,7 @@ r <- function(func, args = list(), libpath = .libPaths(),
               repos = c(getOption("repos"),
                 c(CRAN = "https://cloud.r-project.org")),
               stdout = NULL, stderr = NULL,
-              error = c("error", "stack", "debugger"),
+              error = getOption("callr.error", "error"),
               cmdargs = c("--no-site-file", "--no-environ", "--slave",
                 "--no-save", "--no-restore"),
               show = FALSE, callback = NULL,
