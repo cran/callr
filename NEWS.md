@@ -1,5 +1,17 @@
 
-# 2.0.3
+# callr 2.0.4
+
+* pkgdown web site at https://callr.r-lib.org  (#52, #53).
+
+* callr users `.Renviron` files now (and `R_ENVIRON_USER` as well),
+  but overrides the library path, as requested in `r()`, etc. (#30).
+
+* callr now handles the case when the subprocess calls `quit()`.
+
+* callr now uses the processx package, instead of embedded code,
+  to create and control processes.
+
+# callr 2.0.3
 
 * The default behavior on error can be set now with the `callr.error`
 option.
@@ -8,7 +20,7 @@ option.
 
 * `r_bg` and `rcmd_bg` now have the `supervise` option (#45).
 
-# 2.0.2
+# callr 2.0.2
 
 * Fix a bug with R-devel, caused by the change on 2018-02-08:
   https://github.com/wch/r-source/commit/924582943706100e88a11d6bb0585d25779c91f5
@@ -18,13 +30,13 @@ option.
   or stderr. The client sometimes didn't wait for the server, and callr
   failed with ERROR_PIPE_BUSY (231, All pipe instances are busy).
 
-# 2.0.1
+# callr 2.0.1
 
 * Fix compilation issues on CRAN's Solaris machine
 
 * Fix a test failure on CRAN's macOS machine
 
-# 2.0.0
+# callr 2.0.0
 
 * Run R or R CMD * in the background, see `r_bg()`, `rcmd_bg()`,
   and also `r_process` and `rcmd_process`
@@ -56,6 +68,6 @@ option.
 
 * `rcmd()` gets a `wd` argument to set the working directory
 
-# 1.0.0
+# callr 1.0.0
 
 First public release.
