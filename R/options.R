@@ -49,12 +49,12 @@ r_process_options_default <- function() {
     stdout = "|",
     stderr = "|",
     error = getOption("callr.error", "error"),
-    cmdargs = c("--no-site-file", "--slave",
-      "--no-save", "--no-restore"),
+    cmdargs = c("--slave", "--no-save", "--no-restore"),
     system_profile = FALSE,
     user_profile = FALSE,
     env = character(),
-    supervise = FALSE
+    supervise = FALSE,
+    load_hook = NULL
   )
 }
 

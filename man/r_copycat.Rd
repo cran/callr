@@ -5,8 +5,8 @@
 \title{Run an R process that mimics the current R process}
 \usage{
 r_copycat(func, args = list(), libpath = .libPaths(),
-  repos = getOption("repos"), cmdargs = "--slave", system_profile = TRUE,
-  user_profile = TRUE, env = character(), ...)
+  repos = getOption("repos"), cmdargs = "--slave",
+  system_profile = TRUE, user_profile = TRUE, env = character(), ...)
 }
 \arguments{
 \item{func}{Function object to call in the new R process.
@@ -50,8 +50,8 @@ supplied function and some error handling code.}
 \description{
 Differences to \code{\link[=r]{r()}}:
 \itemize{
-\item No extra repoditories are set up.
-\item The \code{--no-site-file}, \code{--no-save}, \code{--no-restore}
+\item No extra repositories are set up.
+\item The \code{--no-save}, \code{--no-restore}
 command line arguments are not used. (But \code{--slave} still is.)
 \item The system profile and the user profile are loaded.
 \item No extra environment variables are set up.
@@ -61,3 +61,4 @@ command line arguments are not used. (But \code{--slave} still is.)
 Other callr functions: \code{\link{r_vanilla}},
   \code{\link{r}}
 }
+\concept{callr functions}
