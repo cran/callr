@@ -69,6 +69,7 @@ test_that("get stdout/stderr from file", {
 })
 
 test_that("stdout/stderr from pipe", {
+  skip_on_cran()
   opt <- r_session_options(stdout = "|", stderr = "|")
   rs <- r_session$new(opt)
   on.exit(rs$kill())
@@ -88,9 +89,13 @@ test_that("stdout/stderr from pipe", {
     res[c("result", "stdout", "stderr")],
     list(result = 43, stdout = NULL, stderr = NULL))
 
+  processx::poll(list(rs$get_output_connection()), 1000)
   expect_equal(rs$read_output_lines(n = 1), "foo")
+  processx::poll(list(rs$get_output_connection()), 1000)
   expect_equal(rs$read_output_lines(n = 1), "bar")
+  processx::poll(list(rs$get_error_connection()), 1000)
   expect_equal(rs$read_error_lines(n = 1), "bar")
+  processx::poll(list(rs$get_error_connection()), 1000)
   expect_equal(rs$read_error_lines(n = 1), "foo")
   rs$close()
 })
@@ -162,7 +167,11 @@ test_that("messages with R objects", {
   expect_equal(msg, exp)
   rs$call(f, args = list(obj))
   rs$poll_process(2000)
-  expect_equal(rs$read(), list(code = 301, message = exp))
+  expect_equal(
+    rs$read(),
+    structure(
+      list(code = 301, message = exp),
+      class = "callr_session_result"))
   rs$poll_process(2000)
   expect_equal(rs$read()$result, 22)
   rs$close()
@@ -219,5 +228,18 @@ test_that("crash", {
   if (os_platform() != "windows") expect_equal(substr(res$stderr, 1, 2), "e\n")
   expect_false(rs$is_alive())
   expect_equal(rs$get_state(), "finished")
+  rs$close()
+})
+
+test_that("custom load hook", {
+  opts <- r_session_options(load_hook = quote(options(foobar = "baz")))
+  rs <- r_session$new(opts)
+  on.exit(rs$kill(), add = TRUE)
+
+  res <- rs$run_with_output(function() getOption("foobar"))
+  expect_null(res$error)
+  expect_identical(res$result, "baz")
+  expect_equal(res$stdout, "")
+  expect_equal(res$stderr, "")
   rs$close()
 })

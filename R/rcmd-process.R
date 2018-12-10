@@ -14,7 +14,7 @@
 #'
 #' @section Details:
 #' `rcmd_process$new` creates a new instance. Its `options` argument is
-#' best created by the [r_process_options()] function.
+#' best created by the [rcmd_process_options()] function.
 #'
 #' @name rcmd_process
 #' @examples
@@ -26,12 +26,11 @@
 #' }
 NULL
 
-#' @importFrom R6 R6Class
 #' @export
 
-rcmd_process <- R6Class(
+rcmd_process <- R6::R6Class(
   "rcmd_process",
-  inherit = process,
+  inherit = processx::process,
   public = list(
     initialize = function(options)
       rcmdp_init(self, private, super, options)
@@ -58,7 +57,8 @@ rcmdp_init <- function(self, private, super, options) {
   with_envvar(
     options$env,
     super$initialize(options$bin, options$real_cmdargs,
-                     stdout = options$stdout, stderr = options$stderr)
+                     stdout = options$stdout, stderr = options$stderr,
+                     poll_connection = options$poll_connection)
   )
 
   invisible(self)

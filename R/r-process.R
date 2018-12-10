@@ -39,12 +39,11 @@
 #' }
 NULL
 
-#' @importFrom R6 R6Class
 #' @export
 
-r_process <- R6Class(
+r_process <- R6::R6Class(
   "r_process",
-  inherit = process,
+  inherit = processx::process,
   public = list(
     initialize = function(options)
       rp_init(self, private, super, options),
@@ -71,6 +70,7 @@ rp_init <- function(self, private, super, options) {
     options$env,
     super$initialize(options$bin, options$real_cmdargs,
                      stdout = options$stdout, stderr = options$stderr,
+                     poll_connection = options$poll_connection,
                      supervise = options$supervise)
   )
 

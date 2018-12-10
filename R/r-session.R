@@ -85,12 +85,11 @@
 NULL
 
 
-#' @importFrom R6 R6Class
 #' @export
 
-r_session <- R6Class(
+r_session <- R6::R6Class(
   "r_session",
-  inherit = process,
+  inherit = processx::process,
 
   public = list(
     initialize = function(options = r_session_options(), wait = TRUE,
@@ -165,12 +164,11 @@ r_session <- R6Class(
   )
 )
 
-#' @importFrom processx conn_create_pipepair
-
 rs_init <- function(self, private, super, options, wait, wait_timeout) {
 
   options$func <- options$func %||% function() { }
   options$args <- list()
+  options$load_hook <- rs__make_load_hook(options$load_hook)
 
   options <- convert_and_check_my_args(options)
   options <- setup_context(options)
@@ -218,12 +216,10 @@ rs_init <- function(self, private, super, options, wait, wait_timeout) {
   invisible(self)
 }
 
-#' @importFrom processx conn_read_lines
-
 rs_read <- function(self, private) {
-  out <- conn_read_lines(private$pipe, 1)
+  out <- processx::processx_conn_read_lines(private$pipe, 1)
   if (!length(out)) {
-    if (conn_is_incomplete(private$pipe)) return()
+    if (processx::processx_conn_is_incomplete(private$pipe)) return()
     if (self$is_alive()) {
       self$kill()
       out <- "502 R session closed the process connection, killed"
@@ -237,16 +233,16 @@ rs_read <- function(self, private) {
 }
 
 rs_close <- function(self, private, grace) {
-  close(self$get_input_connection())
+  processx::processx_conn_close(self$get_input_connection())
   self$poll_process(grace)
   self$kill()
   self$wait(1000)
   if (self$is_alive()) stop("Could not kill background R session")
   private$state <- "finished"
   private$fun_started_at <- as.POSIXct(NA)
-  close(private$pipe)
-  close(self$get_output_connection())
-  close(self$get_error_connection())
+  processx::processx_conn_close(private$pipe)
+  processx::processx_conn_close(self$get_output_connection())
+  processx::processx_conn_close(self$get_error_connection())
 }
 
 rs_call <- function(self, private, func, args) {
@@ -296,8 +292,6 @@ rs_call <- function(self, private, func, args) {
   private$state <- "busy"
 }
 
-#' @importFrom processx conn_is_incomplete
-
 rs_run_with_output <- function(self, private, func, args) {
   self$call(func, args)
 
@@ -305,15 +299,16 @@ rs_run_with_output <- function(self, private, func, args) {
   res <- NULL
 
   while (go) {
-    ret <- tryCatch(
-      { poll(list(private$pipe), -1)
+    ## TODO: why is this in a tryCatch?
+    res <- tryCatch(
+      { processx::poll(list(private$pipe), -1)
         msg <- self$read()
         if (is.null(msg)) next
         if (msg$code == 200 || (msg$code >= 500 && msg$code < 600)) {
           return(msg)
         }
         if (msg$code == 301) {
-          signalCondition(msg$message)
+          rs__handle_condition(msg$message)
         }
       },
       interrupt = function(e) {
@@ -321,14 +316,20 @@ rs_run_with_output <- function(self, private, func, args) {
         ## The R process will catch the interrupt, and then save the
         ## error object to a file, but this might still take some time,
         ## so we need to poll here. If the bg process ignores
-        ## interrupts, then we throw an error.
-        ps <- poll(list(private$pipe), 1000)[[1]]
+        ## interrupts, then we kill it.
+        ps <- processx::poll(list(private$pipe), 1000)[[1]]
         if (ps == "timeout") {
-          stop("Background process ignores interrupt, still running")
+          self$kill()
         } else {
           res <<- self$read()
           go <<- FALSE
         }
+        iconn <- structure(
+          list(message = "Interrupted"),
+          class = c("interrupt", "condition"))
+        signalCondition(iconn)
+        cat("\n")
+        invokeRestart("abort")
     })
   }
   res
@@ -339,6 +340,8 @@ rs_run <- function(self, private, func, args) {
   if (is.null(res$error)) {
     res$result
   } else{
+    res$stdout <- paste0(res$stdout, self$read_output())
+    res$stderr <- paste0(res$stderr, self$read_error())
     stop(res$error)
   }
 }
@@ -355,14 +358,14 @@ rs_get_running_time <- function(self, private) {
 }
 
 rs_poll_process <- function(self, private, timeout) {
-  poll(list(self$get_poll_connection()), timeout)[[1]]
+  processx::poll(list(self$get_poll_connection()), timeout)[[1]]
 }
 
 rs_attach <- function(self, private) {
   out <- self$get_output_connection()
   err <- self$get_error_connection()
-  while (nchar(x <- conn_read_chars(out))) cat(x)
-  while (nchar(x <- conn_read_chars(err))) cat(bold(x))
+  while (nchar(x <- processx::processx_conn_read_chars(out))) cat(x)
+  while (nchar(x <- processx::processx_conn_read_chars(err))) cat(bold(x))
   tryCatch({
     while (TRUE) {
       cmd <- rs__attach_get_input(paste0("RS ", self$get_pid(), " > "))
@@ -384,19 +387,17 @@ rs__attach_get_input <- function(prompt) {
   cmd
 }
 
-#' @importFrom processx conn_read_chars
-
 rs__attach_wait <- function(self, private) {
   out <- self$get_output_connection()
   err <- self$get_error_connection()
   pro <- private$pipe
   while (TRUE) {
-    pr <- poll(list(out, err, pro), -1)
+    pr <- processx::poll(list(out, err, pro), -1)
     if (pr[[1]] == "ready") {
-      if (nchar(x <- conn_read_chars(out))) cat(x)
+      if (nchar(x <- processx::processx_conn_read_chars(out))) cat(x)
     }
     if (pr[[2]] == "ready") {
-      if (nchar(x <- conn_read_chars(err))) cat(bold(x))
+      if (nchar(x <- processx::processx_conn_read_chars(err))) cat(bold(x))
     }
     if (pr[[3]] == "ready") {
       msg <- self$read()
@@ -418,21 +419,21 @@ rs__write_for_sure <- function(self, private, text) {
   }
 }
 
-#' @importFrom base64enc base64decode
-
 rs__parse_msg <- function(self, private, msg) {
   s <- strsplit(msg, " ", fixed = TRUE)[[1]]
   code <- as.integer(s[1])
   message <- paste(s[-1], collapse = " ")
   if (substr(message, 1, 8) == "base64::") {
     message <- substr(message, 9, nchar(message))
-    message <- unserialize(base64enc::base64decode(message))
+    message <- unserialize(processx::base64_decode(message))
   }
 
   if (! s[1] %in% names(rs__parse_msg_funcs)) {
     stop("Unknown message code: `", s[1], "`")
   }
-  rs__parse_msg_funcs[[ s[1] ]](self, private, code, message)
+  structure(
+    rs__parse_msg_funcs[[ s[1] ]](self, private, code, message),
+    class = "callr_session_result")
 }
 
 rs__parse_msg_funcs <- list()
@@ -481,8 +482,6 @@ rs__parse_msg_funcs[["501"]] <- function(self, private, code, message) {
 }
 
 rs__parse_msg_funcs[["502"]] <- rs__parse_msg_funcs[["501"]]
-
-#' @importFrom processx conn_create_fd conn_write
 
 rs__status_expr <- function(code, text = "", fd = 3) {
   substitute(
@@ -569,7 +568,35 @@ rs__session_load_hook <- function() {
     get("conn_disable_inheritance", asNamespace("processx"))()
     options(error = function() invokeRestart("abort"))
   })
-  paste0(deparse(expr), "\n")
+}
+
+rs__handle_condition <- function(cond) {
+
+  default_handler <- function(x) {
+    classes <- class(x)
+    for (cl in classes) {
+      opt <- paste0("callr.condition_handler_", cl)
+      if (!is.null(val <- getOption(opt)) && is.function(val)) {
+        val(x)
+        break
+      }
+    }
+  }
+
+  withRestarts({
+    signalCondition(cond)
+    default_handler(cond)
+  }, muffleMessage = function() NULL)
+
+  invisible()
+}
+
+rs__make_load_hook <- function(user_hook) {
+  hook <- rs__session_load_hook()
+  if (!is.null(user_hook)) {
+    hook <- substitute({ d; u }, list(d = hook, u = user_hook))
+  }
+  paste0(deparse(hook), "\n")
 }
 
 ## Helper functions ------------------------------------------------------
@@ -598,6 +625,6 @@ r_session_options_default <- function() {
     user_profile = FALSE,
     env = c(TERM = "dumb"),
     supervise = FALSE,
-    load_hook = rs__session_load_hook()
+    load_hook = NULL
   )
 }
