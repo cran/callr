@@ -10,7 +10,7 @@ rscript(script, cmdargs = character(), libpath = .libPaths(),
   callback = NULL, block_callback = NULL, spinner = FALSE,
   system_profile = FALSE, user_profile = FALSE,
   env = rcmd_safe_env(), timeout = Inf, wd = ".",
-  fail_on_status = TRUE, color = TRUE)
+  fail_on_status = TRUE, color = TRUE, ...)
 }
 \arguments{
 \item{script}{Path of the script to run.}
@@ -26,7 +26,11 @@ as it is set using the system or the user profile.}
 
 \item{stdout}{Optionally a file name to send the standard output to.}
 
-\item{stderr}{Optionally a file name to send the standard error to.}
+\item{stderr}{Optionally a file name to send the standard error to.
+It may be the same as \code{stdout}, in which case standard error is
+redirected to standard output. It can also be the special string
+\code{"2>&1"}, in which case standard error will be redirected to standard
+output.}
 
 \item{poll_connection}{Whether to have a control connection to
 the process. This is used to transmit messages from the subprocess
@@ -73,6 +77,8 @@ with a non-zero status code. By default no error is thrown.}
 
 \item{color}{Whether to use terminal colors in the child process,
 assuming they are active in the parent process.}
+
+\item{...}{Extra arguments are passed to \code{\link[processx:run]{processx::run()}}.}
 }
 \description{
 It uses the \code{Rscript} program corresponding to the current R vesion,

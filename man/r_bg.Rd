@@ -9,7 +9,7 @@ r_bg(func, args = list(), libpath = .libPaths(),
   poll_connection = TRUE, error = getOption("callr.error", "error"),
   cmdargs = c("--slave", "--no-save", "--no-restore"),
   system_profile = FALSE, user_profile = FALSE,
-  env = rcmd_safe_env(), supervise = FALSE)
+  env = rcmd_safe_env(), supervise = FALSE, ...)
 }
 \arguments{
 \item{func}{Function object to call in the new R process.
@@ -48,9 +48,9 @@ explicitly to show the output of the command(s).}
 the child R process will be written to.
 In particular \code{message()} sends output to the standard
 error. If nothing was sent to the standard error, then this file
-will be empty. This can be the same file as \code{stderr}, although there
-is no guarantee that the lines will be in the correct chronological
-order.}
+will be empty. This argument can be the same file as \code{stdout},
+in which case they will be correctly interleaved. If this is the
+string \code{"2>&1"}, then standard error is redictd to standard output.}
 
 \item{poll_connection}{Whether to have a control connection to
 the process. This is used to transmit messages from the subprocess
@@ -73,6 +73,9 @@ supplied function and some error handling code.}
 \item{supervise}{Whether to register the process with a supervisor. If \code{TRUE},
 the supervisor will ensure that the process is killed when the R process
 exits.}
+
+\item{...}{Extra arguments are passed to the \link[processx:process]{processx::process}
+constructor.}
 }
 \value{
 An \code{r_process} object, which inherits from \link{process},

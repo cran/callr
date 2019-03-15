@@ -48,9 +48,9 @@
 #'   the child R process will be written to.
 #'   In particular `message()` sends output to the standard
 #'   error. If nothing was sent to the standard error, then this file
-#'   will be empty. This can be the same file as `stderr`, although there
-#'   is no guarantee that the lines will be in the correct chronological
-#'   order.
+#'   will be empty. This argument can be the same file as `stdout`,
+#'   in which case they will be correctly interleaved. If this is the
+#'   string `"2>&1"`, then standard error is redictd to standard output.
 #' @param error What to do if the remote process throws an error.
 #'   See details below.
 #' @param poll_connection Whether to have a control connection to
@@ -83,6 +83,7 @@
 #'   If the process does not finish before the timeout period expires,
 #'   then a `system_command_timeout_error` error is thrown. `Inf`
 #'   means no timeout.
+#' @param ... Extra arguments are passed to [processx::run()].
 #' @return Value of the evaluated expression.
 #'
 #' @section Error handling:
@@ -128,10 +129,11 @@ r <- function(func, args = list(), libpath = .libPaths(),
               show = FALSE, callback = NULL,
               block_callback = NULL, spinner = show && interactive(),
               system_profile = FALSE, user_profile = FALSE,
-              env = rcmd_safe_env(), timeout = Inf) {
+              env = rcmd_safe_env(), timeout = Inf, ...) {
 
   ## This contains the context that we set up in steps
   options <- convert_and_check_my_args(as.list(environment()))
+  options$extra <- list(...)
 
   ## This cleans up everything...
   on.exit(unlink(options$tmp_files, recursive = TRUE), add = TRUE)
