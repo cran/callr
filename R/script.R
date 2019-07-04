@@ -5,14 +5,33 @@ make_vanilla_script_expr <- function(expr_file, res, error,
   ## Code to handle errors in the child
   ## This will inserted into the main script
   err <- if (error == "error") {
-    substitute(
-      saveRDS(list("error", e), file = paste0(`__res__`, ".error")),
+    substitute({
+      # TODO: get rid of magic number 9
+      capture.output(assign(".Traceback", traceback(9), envir = baseenv()))
+
+      # To find the frame of the evaluated function, we search for
+      # do.call in the stack, and then skip one more frame, the other
+      # do.call. This method only must change if the eval code changes,
+      # obviously. Also, it might fail if the pre-hook has do.call() at
+      # the top level.
+      calls <- sys.calls()
+      dcframe <- which(vapply(
+        calls,
+        function(x) length(x) >= 1 && identical(x[[1]], quote(do.call)),
+        logical(1)))[1]
+      if (!is.na(dcframe)) e$`_ignore` <- list(c(1, dcframe + 1L))
+      e$`_pid` <- Sys.getpid()
+      e$`_timestamp` <- Sys.time()
+      err <- as.environment("tools:callr")$`__callr_data__`$err
+      e <- err$add_trace_back(e)
+      saveRDS(list("error", e), file = paste0(`__res__`, ".error")) },
       list(`__res__` = res)
     )
 
   } else if (error %in% c("stack", "debugger")) {
     substitute(
       {
+        capture.output(assign(".Traceback", traceback(9), envir = baseenv()))
         dump.frames("__dump__")         # nocov start
         saveRDS(
           list(`__type__`, e, .GlobalEnv$`__dump__`),
@@ -25,20 +44,16 @@ make_vanilla_script_expr <- function(expr_file, res, error,
       )
     )
   } else {
-    stop("Unknown `error` argument: `", error, "`")
+    throw(new_error("Unknown `error` argument: `", error, "`"))
   }
 
   message <- function() {
     substitute({
+      pxlib <- as.environment("tools:callr")$`__callr_data__`$pxlib
       if (is.null(e$code)) e$code <- "301"
-      msg <- paste0("base64::", processx::base64_encode(serialize(e, NULL)))
+      msg <- paste0("base64::", pxlib$base64_encode(serialize(e, NULL)))
       data <- paste(e$code, msg, "\n")
-      con <- processx::conn_create_fd(3, close = FALSE)
-      while (1) {
-        data <- processx::conn_write(con, data)
-        if (!length(data)) break;
-        Sys.sleep(.1)
-      }
+      pxlib$write_fd(3L, data)
       if (!is.null(findRestart("muffleMessage"))) {
         invokeRestart("muffleMessage")
       }

@@ -52,18 +52,22 @@ test_that("get stdout/stderr from file", {
   rs <- r_session$new()
   on.exit(rs$kill())
 
+  eol <- function(x) {
+    paste0(x, if (.Platform$OS.type == "windows") "\r\n" else "\n")
+  }
+
   for (i in 1:10) {
     res <- rs$run_with_output(function() {
       cat("foo\n"); message("bar"); 42 })
     expect_equal(
       res[c("result", "stdout", "stderr")],
-      list(result = 42, stdout = "foo\n", stderr = "bar\n"))
+      list(result = 42, stdout = eol("foo"), stderr = eol("bar")))
 
     res <- rs$run_with_output(function() {
       cat("bar\n"); message("foo"); 43 })
     expect_equal(
       res[c("result", "stdout", "stderr")],
-      list(result = 43, stdout = "bar\n", stderr = "foo\n"))
+      list(result = 43, stdout = eol("bar"), stderr = eol("foo")))
   }
   rs$close()
 })
@@ -109,7 +113,8 @@ test_that("interrupt", {
   rs$interrupt()
   rs$poll_process(1000)
   res <- rs$read()
-  expect_s3_class(res$error, "interrupt")
+  expect_s3_class(res$error, "rlib_error")
+  expect_s3_class(res$error$parent, "interrupt")
   rs$close()
 })
 
@@ -243,4 +248,19 @@ test_that("custom load hook", {
   expect_equal(res$stdout, "")
   expect_equal(res$stderr, "")
   rs$close()
+})
+
+test_that("traceback", {
+  rs <- r_session$new()
+  on.exit(rs$kill(), add = TRUE)
+
+  do <- function() {
+    f <- function() g()
+    g <- function() stop("oops")
+    f()
+  }
+
+  expect_error(rs$run(do), "oops")
+  expect_output(tb <- rs$traceback(), "1: f() at ", fixed = TRUE)
+  if (getRversion() >= "3.3.0") expect_equal(c(tb[[4]]), "f()")
 })

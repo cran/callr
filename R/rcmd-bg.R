@@ -1,5 +1,5 @@
 
-#' Run an R CMD command in the background
+#' Run an `R CMD` command in the background
 #'
 #' The child process is started in the background, and the function
 #' return immediately.

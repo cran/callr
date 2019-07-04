@@ -1,8 +1,8 @@
 
 #' Read the result object from the output file, or the error
 #'
-#' Even if an error happens, the ouput file might still exist,
-#' because saveRDS creates the file before evaluating its object
+#' Even if an error happens, the output file might still exist,
+#' because [saveRDS()] creates the file before evaluating its object
 #' argument. So we need to check for the error file to decide
 #' if an error happened.
 #'
@@ -20,7 +20,7 @@ get_result <- function(output, options) {
   res <- options$result_file
 
   ## Timeout?
-  if (output$timeout) stop(make_error(output))
+  if (output$timeout) throw(new_callr_error(output))
 
   ## No output file and no error file? Some other (system?) error then,
   ## unless exit status was zero, which is probably just quit().
@@ -32,7 +32,7 @@ get_result <- function(output, options) {
     "has crashed or was killed")
   if (! file.exists(res) && ! file.exists(errorres)) {
     if (is.na(output$status) || output$status != 0) {
-      stop(make_error(output, killmsg))
+      throw(new_callr_error(output, killmsg))
     } else  {
       return(ret)
     }
@@ -48,7 +48,7 @@ get_result <- function(output, options) {
       ret <- readRDS(res),
       error = function(e) {
         if (is.na(output$status) || output$status != 0) {
-          stop(make_error(output, killmsg))
+          throw(new_callr_error(output, killmsg))
         }
       }
     )
@@ -60,12 +60,17 @@ get_result <- function(output, options) {
   ## an error
   tryCatch(
     err <- readRDS(errorres),
-    error = function(e) stop(make_error(output, killmsg))
+    error = function(e) throw(new_callr_error(output, killmsg))
   )
 
   if (err[[1]] == "error") {
     err[[2]]$message <- err[[2]]$message %||% "interrupt"
-    stop(err[[2]])
+    msg <- conditionMessage(err[[2]])
+    class(err[[2]]) <- c("callr_remote_error", class(err[[2]]))
+    if (!is.null(err[[2]]$trace)) {
+      class(err[[2]]$trace) <- c("callr_remote_trace", class(err[[2]]$trace))
+    }
+    throw(new_callr_error(output, msg), parent = err[[2]])
 
   } else if (err[[1]] == "stack") {
     myerr <- structure(
@@ -76,13 +81,13 @@ get_result <- function(output, options) {
       ),
       class = c("callr_error", "error", "condition")
     )
-    stop(myerr)
+    throw(myerr)
 
   } else if (err[[1]] == "debugger") {
     utils::debugger(clean_stack(err[[3]]))
 
   } else {
-    stop("Unknown callr error strategy: ", err[[1]]) # nocov
+    throw(new_error("Unknown callr error strategy: ", err[[1]])) # nocov
   }
 }
 

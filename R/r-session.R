@@ -16,11 +16,15 @@
 #' rs$run_with_output(func, args = list())
 #' rs$call(func, args = list())
 #'
+#' rs$poll_process(timeout)
+#'
 #' rs$get_state()
 #' rs$get_running_time()
 #'
 #' rs$read()
-#' rs$close()
+#' rs$close(grace = 1000)
+#'
+#' rs$traceback()
 #' ```
 #'
 #' @section Arguments:
@@ -32,6 +36,10 @@
 #' * `func`: Function object to call in the background R process.
 #'   Please read the notes for the similar argument of [r()]
 #' * `args`: Arguments to pass to the function. Must be a list.
+#' * `timeout`: Timeout period in milliseconds.
+#' * `grace`: Grace period in milliseconds, to wait for the subprocess to
+#'   exit cleanly, after its standard input is closed. If the process is
+#'   still running after this period, it will be killed.
 #'
 #' @section Details:
 #' `r_session$new()` creates a new R background process. It can wait for the
@@ -51,6 +59,10 @@
 #' returns immediately. To check if the function is done, call the
 #' `poll_process()` method.
 #'
+#' `rs$poll_process()` polls the R session with a timeout. If the session
+#' has finished the computation, it returns with `"ready"`. If the timeout
+#' is reached, it returns with `"timeout"`.
+#'
 #' `rs$get_state()` return the state of the R session. Possible values:
 #' * `"starting"`: starting up,
 #' * `"idle"`: ready to compute,
@@ -65,8 +77,12 @@
 #' available. Events might signal that the function call has finished,
 #' or they can be progress report events.
 #'
-#' `r$close()` terminates the current computation and the R process.
+#' `rs$close()` terminates the current computation and the R process.
 #' The session object will be in `"finished"` state after this.
+#'
+#' `rs$traceback() can be used after an error in the R subprocess. It is
+#' equivalent to the [traceback()] call, but it is performed in the
+#' subprocess.
 #'
 #' @name r_session
 #' @examples
@@ -115,6 +131,9 @@ r_session <- R6::R6Class(
 
     poll_process = function(timeout)
       rs_poll_process(self, private, timeout),
+
+    traceback = function()
+      rs_traceback(self, private),
 
     attach = function()
       rs_attach(self, private),
@@ -168,7 +187,7 @@ rs_init <- function(self, private, super, options, wait, wait_timeout) {
 
   options$func <- options$func %||% function() { }
   options$args <- list()
-  options$load_hook <- rs__make_load_hook(options$load_hook)
+  options$load_hook <- session_load_hook(options$load_hook)
 
   options <- convert_and_check_my_args(options)
   options <- setup_context(options)
@@ -210,7 +229,7 @@ rs_init <- function(self, private, super, options, wait, wait_timeout) {
     } else if (pr["process"] != "ready") {
       cat("stdout:]\n", out, "\n")
       cat("stderr:]\n", err, "\n")
-      stop("Could not start R session, timed out")
+      throw(new_error("Could not start R session, timed out"))
     }
   }
 
@@ -238,7 +257,7 @@ rs_close <- function(self, private, grace) {
   self$poll_process(grace)
   self$kill()
   self$wait(1000)
-  if (self$is_alive()) stop("Could not kill background R session")
+  if (self$is_alive()) throw(new_error("Could not kill background R session"))
   private$state <- "finished"
   private$fun_started_at <- as.POSIXct(NA)
   processx::processx_conn_close(private$pipe)
@@ -251,9 +270,9 @@ rs_call <- function(self, private, func, args) {
   ## We only allow a new command if the R session is idle.
   ## This allows keeping a clean state
   ## TODO: do we need a state at all?
-  if (private$state == "starting") stop("R session not ready yet")
-  if (private$state == "finished") stop("R session finished")
-  if (private$state == "busy") stop("R session busy")
+  if (private$state == "starting") throw(new_error("R session not ready yet"))
+  if (private$state == "finished") throw(new_error("R session finished"))
+  if (private$state == "busy") throw(new_error("R session busy"))
 
   ## Save the function in a file
   private$options$func <- func
@@ -343,7 +362,7 @@ rs_run <- function(self, private, func, args) {
   } else{
     res$stdout <- paste0(res$stdout, self$read_output())
     res$stderr <- paste0(res$stderr, self$read_error())
-    stop(res$error)
+    throw(res$error)
   }
 }
 
@@ -360,6 +379,10 @@ rs_get_running_time <- function(self, private) {
 
 rs_poll_process <- function(self, private, timeout) {
   processx::poll(list(self$get_poll_connection()), timeout)[[1]]
+}
+
+rs_traceback <- function(self, private) {
+  traceback(utils::head(self$run(function() traceback()), -12))
 }
 
 rs_attach <- function(self, private) {
@@ -430,7 +453,7 @@ rs__parse_msg <- function(self, private, msg) {
   }
 
   if (! s[1] %in% names(rs__parse_msg_funcs)) {
-    stop("Unknown message code: `", s[1], "`")
+    throw(new_error("Unknown message code: `", s[1], "`"))
   }
   structure(
     rs__parse_msg_funcs[[ s[1] ]](self, private, code, message),
@@ -440,7 +463,7 @@ rs__parse_msg <- function(self, private, msg) {
 rs__parse_msg_funcs <- list()
 rs__parse_msg_funcs[["200"]] <- function(self, private, code, message) {
   if (private$state != "busy") {
-    stop("Got `done` message when session is not busy")
+    throw(new_error("Got `done` message when session is not busy"))
   }
   private$state <- "idle"
 
@@ -450,7 +473,7 @@ rs__parse_msg_funcs[["200"]] <- function(self, private, code, message) {
 
 rs__parse_msg_funcs[["201"]] <- function(self, private, code, message) {
   if (private$state != "starting") {
-    stop("Session already started, invalid `starting` message")
+    throw(new_error("Session already started, invalid `starting` message"))
   }
   private$state <- "idle"
   list(code = code, message = message)
@@ -484,17 +507,13 @@ rs__parse_msg_funcs[["501"]] <- function(self, private, code, message) {
 
 rs__parse_msg_funcs[["502"]] <- rs__parse_msg_funcs[["501"]]
 
-rs__status_expr <- function(code, text = "", fd = 3) {
+rs__status_expr <- function(code, text = "", fd = 3L) {
   substitute(
     local({
+      pxlib <- as.environment("tools:callr")$`__callr_data__`$pxlib
       code_ <- code; fd_ <- fd; text_ <- text
-      con <- processx::conn_create_fd(fd_, close = FALSE)
       data <- paste0(code_, " ", text_, "\n")
-      while (1) {
-        data <- processx::conn_write(con, data)
-        if (!length(data)) break;
-        Sys.sleep(.1)
-      }
+      pxlib$write_fd(as.integer(fd), data)
     }),
     list(code = code, fd = fd, text = text)
   )
@@ -502,14 +521,12 @@ rs__status_expr <- function(code, text = "", fd = 3) {
 
 rs__prehook <- function(stdout, stderr) {
   oexpr <- if (!is.null(stdout)) substitute({
-    .__stdout__ <- processx::conn_set_stdout(
-      drop = FALSE,
-      .__ocon__ <- processx::conn_create_file(`__fn__`, write = TRUE))
+    env <- as.environment("tools:callr")$`__callr_data__`
+    env$.__stdout__ <- env$pxlib$set_stdout_file(`__fn__`)
   }, list(`__fn__` = stdout))
   eexpr <- if (!is.null(stderr)) substitute({
-    .__stderr__ <- processx::conn_set_stderr(
-      drop = FALSE,
-      .__econ__ <- processx::conn_create_file(`__fn__`, write = TRUE))
+    env <- as.environment("tools:callr")$`__callr_data__`
+    env$.__stderr__ <- env$pxlib$set_stderr_file(`__fn__`)
   }, list(`__fn__` = stderr))
 
   substitute({ o; e }, list(o = oexpr, e = eexpr))
@@ -517,12 +534,12 @@ rs__prehook <- function(stdout, stderr) {
 
 rs__posthook <- function(stdout, stderr) {
   oexpr <- if (!is.null(stdout)) substitute({
-      processx::conn_set_stdout(.__stdout__)
-      close(.__ocon__);
+    env <- as.environment("tools:callr")$`__callr_data__`
+    env$pxlib$set_stdout(env$.__stdout__)
   })
   eexpr <- if (!is.null(stderr)) substitute({
-      processx::conn_set_stderr(.__stderr__)
-      close(.__econ__);
+    env <- as.environment("tools:callr")$`__callr_data__`
+    env$pxlib$set_stderr(env$.__stderr__)
   })
 
   substitute({ o; e }, list(o = oexpr, e = eexpr))
@@ -564,13 +581,6 @@ rs__get_result_and_output <- function(self, private) {
   list(result = res, stdout = stdout, stderr = stderr, error = err)
 }
 
-rs__session_load_hook <- function() {
-  expr <- substitute({
-    get("conn_disable_inheritance", asNamespace("processx"))()
-    options(error = function() invokeRestart("abort"))
-  })
-}
-
 rs__handle_condition <- function(cond) {
 
   default_handler <- function(x) {
@@ -590,14 +600,6 @@ rs__handle_condition <- function(cond) {
   }, muffleMessage = function() NULL)
 
   invisible()
-}
-
-rs__make_load_hook <- function(user_hook) {
-  hook <- rs__session_load_hook()
-  if (!is.null(user_hook)) {
-    hook <- substitute({ d; u }, list(d = hook, u = user_hook))
-  }
-  paste0(deparse(hook), "\n")
 }
 
 ## Helper functions ------------------------------------------------------

@@ -19,11 +19,15 @@ rs$run(func, args = list())
 rs$run_with_output(func, args = list())
 rs$call(func, args = list())
 
+rs$poll_process(timeout)
+
 rs$get_state()
 rs$get_running_time()
 
 rs$read()
-rs$close()
+rs$close(grace = 1000)
+
+rs$traceback()
 }
 }
 
@@ -38,6 +42,10 @@ in milliseconds.
 \item \code{func}: Function object to call in the background R process.
 Please read the notes for the similar argument of \code{\link[=r]{r()}}
 \item \code{args}: Arguments to pass to the function. Must be a list.
+\item \code{timeout}: Timeout period in milliseconds.
+\item \code{grace}: Grace period in milliseconds, to wait for the subprocess to
+exit cleanly, after its standard input is closed. If the process is
+still running after this period, it will be killed.
 }
 }
 
@@ -60,6 +68,10 @@ errors, but returns a non-zero \code{error} member in the result list.
 returns immediately. To check if the function is done, call the
 \code{poll_process()} method.
 
+\code{rs$poll_process()} polls the R session with a timeout. If the session
+has finished the computation, it returns with \code{"ready"}. If the timeout
+is reached, it returns with \code{"timeout"}.
+
 \code{rs$get_state()} return the state of the R session. Possible values:
 \itemize{
 \item \code{"starting"}: starting up,
@@ -76,8 +88,12 @@ started. The latter is NA if there is no active computation.
 available. Events might signal that the function call has finished,
 or they can be progress report events.
 
-\code{r$close()} terminates the current computation and the R process.
+\code{rs$close()} terminates the current computation and the R process.
 The session object will be in \code{"finished"} state after this.
+
+`rs$traceback() can be used after an error in the R subprocess. It is
+equivalent to the \code{\link[=traceback]{traceback()}} call, but it is performed in the
+subprocess.
 }
 
 \examples{
