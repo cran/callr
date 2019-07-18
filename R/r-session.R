@@ -25,6 +25,8 @@
 #' rs$close(grace = 1000)
 #'
 #' rs$traceback()
+#' rs$debug()
+#' rs$attach()
 #' ```
 #'
 #' @section Arguments:
@@ -84,6 +86,12 @@
 #' equivalent to the [traceback()] call, but it is performed in the
 #' subprocess.
 #'
+#' `rs$debug()` is an interactive debugger to inspect the dumped frames
+#' in the subprocess, after an error. See more at [r_session_debug].
+#'
+#' `rs$attach()` is an experimental function that provides a REPL
+#' (Read-Eval-Print-Loop) to the subprocess.
+#'
 #' @name r_session
 #' @examples
 #' \dontrun{
@@ -134,6 +142,8 @@ r_session <- R6::R6Class(
 
     traceback = function()
       rs_traceback(self, private),
+    debug = function()
+      rs_debug(self, private),
 
     attach = function()
       rs_attach(self, private),
@@ -382,7 +392,75 @@ rs_poll_process <- function(self, private, timeout) {
 }
 
 rs_traceback <- function(self, private) {
+  ## TODO: get rid of magic number 12
   traceback(utils::head(self$run(function() traceback()), -12))
+}
+
+rs_debug <- function(self, private) {
+  hasdump <- self$run(function() {
+    ! is.null(as.environment("tools:callr")$`__callr_data__`$.Last.dump)
+  })
+  if (!hasdump) stop("Can't find dumped frames, nothing to debug")
+
+  help <- function() {
+    cat("Debugging in process ", self$get_pid(),
+        ", press CTRL+C (ESC) to quit. Commands:\n", sep = "")
+    cat("  .where       -- print stack trace\n",
+        "  .inspect <n> -- inspect a frame, 0 resets to .GlobalEnv\n",
+        "  .help        -- print this message\n",
+        "  <cmd>        -- run <cmd> in frame or .GlobalEnv\n\n", sep = "")
+  }
+
+  translate_cmd <- function(cmd) {
+    if (cmd == ".where") {
+      traceback(tb)
+      if (frame) cat("Inspecting frame", frame, "\n")
+      NULL
+
+    } else if (cmd == ".help") {
+      help()
+      NULL
+
+    } else if (grepl("^.inspect ", cmd)) {
+      newframe <- as.integer(strsplit(cmd, " ")[[1]][[2]])
+      if (is.na(newframe)) {
+        message("Cannot parse frame number")
+      } else {
+        frame <<- newframe
+      }
+      NULL
+
+    } else {
+      cmd
+    }
+  }
+
+  help()
+  tb <- self$traceback()
+  frame <- 0L
+
+  while (TRUE) {
+    cat("\n")
+    prompt <- paste0(
+      "RS ", self$get_pid(),
+      if (frame) paste0(" (frame ", frame, ")"), " > ")
+    cmd <- rs__attach_get_input(prompt)
+    cmd2 <- translate_cmd(cmd)
+    if (is.null(cmd2)) next
+
+    update_history(cmd)
+
+    ret <- self$run_with_output(function(cmd, frame) {
+      dump <- as.environment("tools:callr")$`__callr_data__`$.Last.dump
+      envir <- if (!frame) .GlobalEnv else dump[[frame + 12L]]
+      eval(parse(text = cmd), envir = envir)
+    }, list(cmd = cmd, frame = frame))
+    cat(ret$stdout)
+    cat(ret$stderr)
+    if (!is.null(ret$error)) print(ret$error)
+    print(ret$result)
+  }
+  invisible()
 }
 
 rs_attach <- function(self, private) {
@@ -393,6 +471,7 @@ rs_attach <- function(self, private) {
   tryCatch({
     while (TRUE) {
       cmd <- rs__attach_get_input(paste0("RS ", self$get_pid(), " > "))
+      update_history(cmd)
       private$write_for_sure(paste0(cmd, "\n"))
       private$report_back(202, "done")
       private$attach_wait()
@@ -521,12 +600,18 @@ rs__status_expr <- function(code, text = "", fd = 3L) {
 
 rs__prehook <- function(stdout, stderr) {
   oexpr <- if (!is.null(stdout)) substitute({
-    env <- as.environment("tools:callr")$`__callr_data__`
-    env$.__stdout__ <- env$pxlib$set_stdout_file(`__fn__`)
+    assign(
+      ".__stdout__",
+      as.environment("tools:callr")$`__callr_data__`$pxlib$
+                                   set_stdout_file(`__fn__`),
+      envir = as.environment("tools:callr")$`__callr_data__`)
   }, list(`__fn__` = stdout))
   eexpr <- if (!is.null(stderr)) substitute({
-    env <- as.environment("tools:callr")$`__callr_data__`
-    env$.__stderr__ <- env$pxlib$set_stderr_file(`__fn__`)
+    assign(
+      ".__stderr__",
+      as.environment("tools:callr")$`__callr_data__`$pxlib$
+                                   set_stderr_file(`__fn__`),
+      envir = as.environment("tools:callr")$`__callr_data__`)
   }, list(`__fn__` = stderr))
 
   substitute({ o; e }, list(o = oexpr, e = eexpr))
@@ -534,12 +619,14 @@ rs__prehook <- function(stdout, stderr) {
 
 rs__posthook <- function(stdout, stderr) {
   oexpr <- if (!is.null(stdout)) substitute({
-    env <- as.environment("tools:callr")$`__callr_data__`
-    env$pxlib$set_stdout(env$.__stdout__)
+    as.environment("tools:callr")$`__callr_data__`$
+      pxlib$set_stdout(as.environment("tools:callr")$`__callr_data__`$
+      .__stdout__)
   })
   eexpr <- if (!is.null(stderr)) substitute({
-    env <- as.environment("tools:callr")$`__callr_data__`
-    env$pxlib$set_stderr(env$.__stderr__)
+    as.environment("tools:callr")$`__callr_data__`$
+      pxlib$set_stderr(as.environment("tools:callr")$`__callr_data__`$
+      .__stderr__)
   })
 
   substitute({ o; e }, list(o = oexpr, e = eexpr))
@@ -632,3 +719,63 @@ r_session_options_default <- function() {
     extra = list()
   )
 }
+
+#' Interactive debugging of persistent R sessions
+#'
+#' The `r_session$debug()` method is an interactive debugger to inspect
+#' the stack of the background process after an error.
+#'
+#' `$debug()` starts a REPL (Read-Eval-Print-Loop), that evaluates R
+#' expressions in the subprocess. It is similar to [browser()] and
+#' [debugger()] and also has some extra commands:
+#'
+#' * `.help` prints a short help message.
+#' * `.where` prints the complete stack trace of the error. (The same as
+#'   the `$traceback()` method.
+#' * `.inspect <n>` switches the "focus" to frame `<n>`. Frame 0 is the
+#'   global environment, so `.inspect 0` will switch back to that.
+#'
+#' To exit the debugger, press the usual interrupt key, i.e. `CTRL+c` or
+#' `ESC` in some GUIs.
+#'
+#' Here is an example session that uses `$debug()` (some output is omitted
+#' for brevity):
+#'
+#' ```
+#' # ----------------------------------------------------------------------
+#' > rs <- r_session$new()
+#' > rs$run(function() knitr::knit("no-such-file"))
+#' Error in rs_run(self, private, func, args) :
+#'  callr subprocess failed: cannot open the connection
+#'
+#' > rs$debug()
+#' Debugging in process 87361, press CTRL+C (ESC) to quit. Commands:
+#'   .where       -- print stack trace
+#'   .inspect <n> -- inspect a frame, 0 resets to .GlobalEnv
+#'   .help        -- print this message
+#'   <cmd>        -- run <cmd> in frame or .GlobalEnv
+#'
+#' 3: file(con, "r")
+#' 2: readLines(input2, encoding = "UTF-8", warn = FALSE)
+#' 1: knitr::knit("no-such-file") at #1
+#'
+#' RS 87361 > .inspect 1
+#'
+#' RS 87361 (frame 1) > ls()
+#'  [1] "encoding"  "envir"     "ext"       "in.file"   "input"     "input.dir"
+#'  [7] "input2"    "ocode"     "oconc"     "oenvir"    "oopts"     "optc"
+#' [13] "optk"      "otangle"   "out.purl"  "output"    "quiet"     "tangle"
+#' [19] "text"
+#'
+#' RS 87361 (frame 1) > input
+#' [1] "no-such-file"
+#'
+#' RS 87361 (frame 1) > file.exists(input)
+#' [1] FALSE
+#'
+#' RS 87361 (frame 1) > # <CTRL + C>
+#' # ----------------------------------------------------------------------
+#' ```
+#'
+#' @name r_session_debug
+NULL
