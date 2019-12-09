@@ -4,12 +4,22 @@
 \alias{r_bg}
 \title{Evaluate an expression in another R session, in the background}
 \usage{
-r_bg(func, args = list(), libpath = .libPaths(),
-  repos = default_repos(), stdout = "|", stderr = "|",
-  poll_connection = TRUE, error = getOption("callr.error", "error"),
+r_bg(
+  func,
+  args = list(),
+  libpath = .libPaths(),
+  repos = default_repos(),
+  stdout = "|",
+  stderr = "|",
+  poll_connection = TRUE,
+  error = getOption("callr.error", "error"),
   cmdargs = c("--slave", "--no-save", "--no-restore"),
-  system_profile = FALSE, user_profile = FALSE,
-  env = rcmd_safe_env(), supervise = FALSE, ...)
+  system_profile = FALSE,
+  user_profile = "project",
+  env = rcmd_safe_env(),
+  supervise = FALSE,
+  ...
+)
 }
 \arguments{
 \item{func}{Function object to call in the new R process.
@@ -54,7 +64,7 @@ string \code{"2>&1"}, then standard error is redirected to standard output.}
 
 \item{poll_connection}{Whether to have a control connection to
 the process. This is used to transmit messages from the subprocess
-to the parent.}
+to the main process.}
 
 \item{error}{What to do if the remote process throws an error.
 See details below.}
@@ -66,7 +76,11 @@ supplied function and some error handling code.}
 
 \item{system_profile}{Whether to use the system profile file.}
 
-\item{user_profile}{Whether to use the user's profile file.}
+\item{user_profile}{Whether to use the user's profile file.
+If this is \code{"project"}, then only the profile from the working
+directory is used, but the \code{R_PROFILE_USER} environment variable
+and the user level profile are not. See also "Security considerations"
+below.}
 
 \item{env}{Environment variables to set for the child process.}
 
@@ -86,6 +100,18 @@ has a \code{get_result()} method to collect the result.
 Starts evaluating an R function call in a background R process, and
 returns immediately.
 }
+\section{Security considerations}{
+
+
+\code{callr} makes a copy of the user's \code{.Renviron} file and potentially of
+the local or user \code{.Rprofile}, in the session temporary
+directory. Avoid storing sensitive information such as passwords, in
+your environment file or your profile, otherwise this information will
+get scattered in various files, at least temporarily, until the
+subprocess finishes. You can use the keyring package to avoid passwords
+in plain files.
+}
+
 \examples{
 \dontrun{
 rx <- r_bg(function() 1 + 2)

@@ -4,13 +4,28 @@
 \alias{rscript}
 \title{Run an R script}
 \usage{
-rscript(script, cmdargs = character(), libpath = .libPaths(),
-  repos = default_repos(), stdout = NULL, stderr = NULL,
-  poll_connection = TRUE, echo = FALSE, show = TRUE,
-  callback = NULL, block_callback = NULL, spinner = FALSE,
-  system_profile = FALSE, user_profile = FALSE,
-  env = rcmd_safe_env(), timeout = Inf, wd = ".",
-  fail_on_status = TRUE, color = TRUE, ...)
+rscript(
+  script,
+  cmdargs = character(),
+  libpath = .libPaths(),
+  repos = default_repos(),
+  stdout = NULL,
+  stderr = NULL,
+  poll_connection = TRUE,
+  echo = FALSE,
+  show = TRUE,
+  callback = NULL,
+  block_callback = NULL,
+  spinner = FALSE,
+  system_profile = FALSE,
+  user_profile = "project",
+  env = rcmd_safe_env(),
+  timeout = Inf,
+  wd = ".",
+  fail_on_status = TRUE,
+  color = TRUE,
+  ...
+)
 }
 \arguments{
 \item{script}{Path of the script to run.}
@@ -59,7 +74,11 @@ the child R session is running. By default it is shown if
 
 \item{system_profile}{Whether to use the system profile file.}
 
-\item{user_profile}{Whether to use the user's profile file.}
+\item{user_profile}{Whether to use the user's profile file.
+If this is \code{"project"}, then only the profile from the working
+directory is used, but the \code{R_PROFILE_USER} environment variable
+and the user level profile are not. See also "Security considerations"
+below.}
 
 \item{env}{Environment variables to set for the child process.}
 
@@ -84,3 +103,15 @@ assuming they are active in the parent process.}
 It uses the \code{Rscript} program corresponding to the current R version,
 to run the script. It streams \code{stdout} and \code{stderr} of the process.
 }
+\section{Security considerations}{
+
+
+\code{callr} makes a copy of the user's \code{.Renviron} file and potentially of
+the local or user \code{.Rprofile}, in the session temporary
+directory. Avoid storing sensitive information such as passwords, in
+your environment file or your profile, otherwise this information will
+get scattered in various files, at least temporarily, until the
+subprocess finishes. You can use the keyring package to avoid passwords
+in plain files.
+}
+

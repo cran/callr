@@ -175,3 +175,59 @@ test_that("stdout and stderr are interleaved correctly", {
   expect_equal(readLines(out), "stdoutstderrstdout2")
   gc()
 })
+
+test_that("callr messages do not cause problems", {
+
+  do <- function() {
+    cnd <- structure(
+      list(message = "foobar"),
+      class = c("callr_message", "condition")
+    )
+    signalCondition(cnd)
+    signalCondition(cnd)
+    signalCondition(cnd)
+    cat("stdout\n")
+    message("stderr")
+    "hi"
+  }
+
+  out <- tempfile()
+  err <- tempfile()
+  on.exit(unlink(c(out, err)), add = TRUE)
+  ret <- callr::r(do, stdout = out, stderr = err, poll_connection = FALSE)
+
+  expect_equal(ret, "hi")
+  expect_equal(readLines(out), "stdout")
+  expect_equal(readLines(err), "stderr")
+})
+
+test_that("cleans up temp files", {
+  skip_on_cran()
+
+  rsc <- function() {
+    library(callr)
+    old <- dir(tempdir(), pattern = "^callr-")
+
+    result <- callr::r(function() 1+1)
+
+    new <- setdiff(dir(tempdir(), "^callr-"), old)
+
+    list(result = result, new = new)
+  }
+
+  out <- r(rsc)
+  expect_identical(out$result, 2)
+  expect_identical(out$new, character())
+})
+
+test_that("local .Rprofile is loaded", {
+  tmp <- tempfile()
+  on.exit(unlink(tmp, recursive = TRUE), add = TRUE)
+  dir.create(tmp)
+  wd <- getwd()
+  on.exit(setwd(wd), add = TRUE)
+  setwd(tmp)
+  cat("aa <- 123\n", file = ".Rprofile")
+  out <- callr::r(function() aa)
+  expect_equal(out, 123)
+})

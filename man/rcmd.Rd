@@ -3,23 +3,51 @@
 \name{rcmd}
 \alias{rcmd}
 \alias{rcmd_safe}
-\title{Run an \code{R CMD} command}
+\title{Run an \verb{R CMD} command}
 \usage{
-rcmd(cmd, cmdargs = character(), libpath = .libPaths(),
-  repos = default_repos(), stdout = NULL, stderr = NULL,
-  poll_connection = TRUE, echo = FALSE, show = FALSE,
-  callback = NULL, block_callback = NULL, spinner = show &&
-  interactive(), system_profile = FALSE, user_profile = FALSE,
-  env = rcmd_safe_env(), timeout = Inf, wd = ".",
-  fail_on_status = FALSE, ...)
+rcmd(
+  cmd,
+  cmdargs = character(),
+  libpath = .libPaths(),
+  repos = default_repos(),
+  stdout = NULL,
+  stderr = NULL,
+  poll_connection = TRUE,
+  echo = FALSE,
+  show = FALSE,
+  callback = NULL,
+  block_callback = NULL,
+  spinner = show && interactive(),
+  system_profile = FALSE,
+  user_profile = "project",
+  env = rcmd_safe_env(),
+  timeout = Inf,
+  wd = ".",
+  fail_on_status = FALSE,
+  ...
+)
 
-rcmd_safe(cmd, cmdargs = character(), libpath = .libPaths(),
-  repos = default_repos(), stdout = NULL, stderr = NULL,
-  poll_connection = TRUE, echo = FALSE, show = FALSE,
-  callback = NULL, block_callback = NULL, spinner = show &&
-  interactive(), system_profile = FALSE, user_profile = FALSE,
-  env = rcmd_safe_env(), timeout = Inf, wd = ".",
-  fail_on_status = FALSE, ...)
+rcmd_safe(
+  cmd,
+  cmdargs = character(),
+  libpath = .libPaths(),
+  repos = default_repos(),
+  stdout = NULL,
+  stderr = NULL,
+  poll_connection = TRUE,
+  echo = FALSE,
+  show = FALSE,
+  callback = NULL,
+  block_callback = NULL,
+  spinner = show && interactive(),
+  system_profile = FALSE,
+  user_profile = "project",
+  env = rcmd_safe_env(),
+  timeout = Inf,
+  wd = ".",
+  fail_on_status = FALSE,
+  ...
+)
 }
 \arguments{
 \item{cmd}{Command to run. See \code{R --help} from the command
@@ -72,7 +100,11 @@ the child R session is running. By default it is shown if
 
 \item{system_profile}{Whether to use the system profile file.}
 
-\item{user_profile}{Whether to use the user's profile file.}
+\item{user_profile}{Whether to use the user's profile file.
+If this is \code{"project"}, then only the profile from the working
+directory is used, but the \code{R_PROFILE_USER} environment variable
+and the user level profile are not. See also "Security considerations"
+below.}
 
 \item{env}{Environment variables to set for the child process.}
 
@@ -91,13 +123,13 @@ with a non-zero status code. By default no error is thrown.}
 \item{...}{Extra arguments are passed to \code{\link[processx:run]{processx::run()}}.}
 }
 \value{
-A list with the command line \code{$command}),
-standard output (\code{$stdout}), standard error (\code{stderr}),
-exit status (\code{$status}) of the external \code{R CMD} command, and
-whether a timeout was reached (\code{$timeout}).
+A list with the command line \verb{$command}),
+standard output (\verb{$stdout}), standard error (\code{stderr}),
+exit status (\verb{$status}) of the external \verb{R CMD} command, and
+whether a timeout was reached (\verb{$timeout}).
 }
 \description{
-Run an \code{R CMD} command form within R. This will usually start
+Run an \verb{R CMD} command form within R. This will usually start
 another R process, from a shell script.
 }
 \details{
@@ -105,13 +137,26 @@ Starting from \code{callr} 2.0.0, \code{rcmd()} has safer defaults, the same as
 the \code{rcmd_safe()} default values. Use \code{\link[=rcmd_copycat]{rcmd_copycat()}} for the old
 defaults.
 }
+\section{Security considerations}{
+
+
+\code{callr} makes a copy of the user's \code{.Renviron} file and potentially of
+the local or user \code{.Rprofile}, in the session temporary
+directory. Avoid storing sensitive information such as passwords, in
+your environment file or your profile, otherwise this information will
+get scattered in various files, at least temporarily, until the
+subprocess finishes. You can use the keyring package to avoid passwords
+in plain files.
+}
+
 \examples{
 \dontrun{
 rcmd("config", "CC")
 }
 }
 \seealso{
-Other R CMD commands: \code{\link{rcmd_bg}},
-  \code{\link{rcmd_copycat}}
+Other R CMD commands: 
+\code{\link{rcmd_bg}()},
+\code{\link{rcmd_copycat}()}
 }
 \concept{R CMD commands}

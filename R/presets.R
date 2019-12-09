@@ -8,6 +8,7 @@
 #'
 #' @param ... Additional arguments are passed to [r()].
 #' @inheritParams r
+#' @inheritSection r Security considerations
 #'
 #' @family callr functions
 #' @export
@@ -23,7 +24,7 @@
 
 r_vanilla <- function(func, args = list(), libpath = character(),
                       repos = c(CRAN = "@CRAN@"), cmdargs = "--slave",
-                      system_profile = FALSE, user_profile = FALSE,
+                      system_profile = FALSE, user_profile = "project",
                       env = character(), ...) {
 
   r(func, args = args, libpath = libpath, repos = repos,
@@ -45,6 +46,7 @@ r_safe <- r
 #' * The system profile and the user profile are loaded.
 #' * No extra environment variables are set up.
 #'
+#' @inheritSection r Security considerations
 #' @inheritParams r
 #' @param ... Additional arguments are passed to [r()].
 #'

@@ -117,7 +117,7 @@ test_that("interrupt", {
   rs$poll_process(1000)
   res <- rs$read()
   expect_s3_class(res$error, "rlib_error")
-  expect_s3_class(res$error$parent, "interrupt")
+  expect_s3_class(res$error$parent$error, "interrupt")
   rs$close()
 })
 
@@ -144,7 +144,7 @@ test_that("messages", {
   expect_equal(
     msg,
     structure(
-      list(code = 301, message = "ahoj"),
+      list(code = 301, message = "ahoj", muffle = "callr_r_session_muffle"),
       class = c("callr_message", "condition")))
   rs$close()
 })
@@ -170,9 +170,11 @@ test_that("messages with R objects", {
     foobar_class = function(e) msg <<- e
   )
   expect_equal(res$result, 22)
-  exp <- structure(list(code = 301, a = 1, b = 2),
-                   class = c("foobar_class", "callr_message", "condition"))
-  expect_equal(msg, exp)
+  exp <- exp2 <- structure(
+    list(code = 301, a = 1, b = 2),
+    class = c("foobar_class", "callr_message", "condition"))
+  exp2$muffle <- "callr_r_session_muffle"
+  expect_equal(msg, exp2)
   rs$call(f, args = list(obj))
   rs$poll_process(2000)
   expect_equal(
@@ -265,9 +267,7 @@ test_that("traceback", {
 
   expect_error(rs$run(do), "oops")
   expect_output(tb <- rs$traceback(), "1: \"?f()\"?")
-  if (getRversion() >= "3.7.0") {
-    expect_equal(c(tb[[4]]), "\"f()\"")
-  } else if (getRversion() >= "3.3.0") {
-    expect_equal(c(tb[[4]]), "f()")
+  if (getRversion() >= "3.3.0") {
+    expect_match(c(tb[[4]]), "f()", fixed = TRUE)
   }
 })

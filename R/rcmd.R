@@ -29,6 +29,7 @@
 #' @param fail_on_status Whether to throw an R error if the command returns
 #'   with a non-zero status code. By default no error is thrown.
 #' @inheritParams r
+#' @inheritSection r Security considerations
 #' @return A list with the command line `$command`),
 #'   standard output (`$stdout`), standard error (`stderr`),
 #'   exit status (`$status`) of the external `R CMD` command, and
@@ -47,7 +48,7 @@ rcmd <- function(cmd, cmdargs = character(), libpath = .libPaths(),
                  stdout = NULL, stderr = NULL, poll_connection = TRUE,
                  echo = FALSE, show = FALSE, callback = NULL,
                  block_callback = NULL, spinner = show && interactive(),
-                 system_profile = FALSE, user_profile = FALSE,
+                 system_profile = FALSE, user_profile = "project",
                  env = rcmd_safe_env(), timeout = Inf, wd = ".",
                  fail_on_status = FALSE, ...) {
 
@@ -58,6 +59,9 @@ rcmd <- function(cmd, cmdargs = character(), libpath = .libPaths(),
   options <- setup_context(options)
   options <- setup_callbacks(options)
   options <- setup_rcmd_binary_and_args(options)
+
+  ## This cleans up everything...
+  on.exit(unlink(options$tmp_files, recursive = TRUE), add = TRUE)
 
   run_r(options)
 }
@@ -115,6 +119,7 @@ rcmd_safe_env <- function() {
 #' * The `repos` options is unchanged.
 #' * No extra environment variables are defined.
 #'
+#' @inheritSection r Security considerations
 #' @inheritParams rcmd
 #' @param ... Additional arguments are passed to [rcmd()].
 #'

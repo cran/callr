@@ -1,6 +1,7 @@
 
 make_vanilla_script_expr <- function(expr_file, res, error,
-                                     pre_hook = NULL, post_hook = NULL) {
+                                     pre_hook = NULL, post_hook = NULL,
+                                     messages = FALSE) {
 
   ## Code to handle errors in the child
   ## This will inserted into the main script
@@ -16,6 +17,13 @@ make_vanilla_script_expr <- function(expr_file, res, error,
       assign(".Last.dump", .GlobalEnv$`__callr_dump__`, envir = callr_data)
       rm("__callr_dump__", envir = .GlobalEnv)
 
+      # callr_remote_error does have conditionMessage and conditionCall
+      # methods that refer to $error, but in the subprocess callr is not
+      # loaded, maybe, and these methods are not defined. So we do add
+      # the message and call of the original error
+      e2 <- err$new_error(conditionMessage(e), call. = conditionCall(e))
+      class(e2) <- c("callr_remote_error", class(e2))
+      e2$error <- e
       # To find the frame of the evaluated function, we search for
       # do.call in the stack, and then skip one more frame, the other
       # do.call. This method only must change if the eval code changes,
@@ -26,11 +34,12 @@ make_vanilla_script_expr <- function(expr_file, res, error,
         calls,
         function(x) length(x) >= 1 && identical(x[[1]], quote(do.call)),
         logical(1)))[1]
-      if (!is.na(dcframe)) e$`_ignore` <- list(c(1, dcframe + 1L))
-      e$`_pid` <- Sys.getpid()
-      e$`_timestamp` <- Sys.time()
-      e <- err$add_trace_back(e)
-      saveRDS(list("error", e), file = paste0(`__res__`, ".error")) },
+      if (!is.na(dcframe)) e2$`_ignore` <- list(c(1, dcframe + 1L))
+      e2$`_pid` <- Sys.getpid()
+      e2$`_timestamp` <- Sys.time()
+      if (inherits(e, "rlib_error")) e2$parent <- e$parent
+      e2 <- err$add_trace_back(e2)
+      saveRDS(list("error", e2), file = paste0(`__res__`, ".error")) },
       list(`__res__` = res)
     )
 
@@ -53,17 +62,26 @@ make_vanilla_script_expr <- function(expr_file, res, error,
     throw(new_error("Unknown `error` argument: `", error, "`"))
   }
 
-  message <- function() {
-    substitute({
-      pxlib <- as.environment("tools:callr")$`__callr_data__`$pxlib
-      if (is.null(e$code)) e$code <- "301"
-      msg <- paste0("base64::", pxlib$base64_encode(serialize(e, NULL)))
-      data <- paste(e$code, msg, "\n")
-      pxlib$write_fd(3L, data)
-      if (!is.null(findRestart("muffleMessage"))) {
-        invokeRestart("muffleMessage")
-      }
-    })
+  if (messages) {
+    message <- function() {
+      substitute({
+        pxlib <- as.environment("tools:callr")$`__callr_data__`$pxlib
+        if (is.null(e$code)) e$code <- "301"
+        msg <- paste0("base64::", pxlib$base64_encode(serialize(e, NULL)))
+        data <- paste(e$code, msg, "\n")
+        pxlib$write_fd(3L, data)
+
+        if (inherits(e, "cli_message") &&
+            !is.null(findRestart("cli_message_handled"))) {
+          invokeRestart("cli_message_handled")
+        } else if (inherits(e, "message") &&
+                   !is.null(findRestart("muffleMessage"))) {
+          invokeRestart("muffleMessage")
+        }
+      })
+    }
+  } else {
+    message <- function() substitute(signalCondition(e))
   }
 
   ## The function to run and its arguments are saved as a list:
@@ -121,7 +139,7 @@ make_vanilla_script_file <- function(expr_file, res, error) {
   expr <- make_vanilla_script_expr(expr_file, res, error)
   script <- deparse(expr)
 
-  tmp <- tempfile()
+  tmp <- tempfile("callr-scr-")
   cat(script, file = tmp, sep = "\n")
   tmp
 }

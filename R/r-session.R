@@ -151,6 +151,7 @@ r_session <- R6::R6Class(
     finalize = function() {
       unlink(private$tmp_output_file)
       unlink(private$tmp_error_file)
+      unlink(private$options$tmp_files, recursive = TRUE)
       if ("finalize" %in% ls(super)) super$finalize()
     },
     print = function(...) {
@@ -308,7 +309,8 @@ rs_call <- function(self, private, func, args) {
   expr <- make_vanilla_script_expr(private$options$func_file,
                                    private$options$result_file,
                                    private$options$error,
-                                   pre_hook = pre, post_hook = post)
+                                   pre_hook = pre, post_hook = post,
+                                   messages = TRUE)
   cmd <- paste0(deparse(expr), "\n")
 
   ## Write this to stdin
@@ -681,10 +683,13 @@ rs__handle_condition <- function(cond) {
     }
   }
 
+  if (is.list(cond) && is.null(cond$muffle)) {
+    cond$muffle <- "callr_r_session_muffle"
+  }
   withRestarts({
     signalCondition(cond)
     default_handler(cond)
-  }, muffleMessage = function() NULL)
+  }, callr_r_session_muffle = function() NULL)
 
   invisible()
 }
@@ -712,7 +717,7 @@ r_session_options_default <- function() {
     error = getOption("callr.error", "error"),
     cmdargs = c("--no-readline", "--slave", "--no-save", "--no-restore"),
     system_profile = FALSE,
-    user_profile = FALSE,
+    user_profile = "project",
     env = c(TERM = "dumb"),
     supervise = FALSE,
     load_hook = NULL,

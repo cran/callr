@@ -5,21 +5,47 @@
 \alias{r_safe}
 \title{Evaluate an expression in another R session}
 \usage{
-r(func, args = list(), libpath = .libPaths(),
-  repos = default_repos(), stdout = NULL, stderr = NULL,
-  poll_connection = TRUE, error = getOption("callr.error", "error"),
-  cmdargs = c("--slave", "--no-save", "--no-restore"), show = FALSE,
-  callback = NULL, block_callback = NULL, spinner = show &&
-  interactive(), system_profile = FALSE, user_profile = FALSE,
-  env = rcmd_safe_env(), timeout = Inf, ...)
+r(
+  func,
+  args = list(),
+  libpath = .libPaths(),
+  repos = default_repos(),
+  stdout = NULL,
+  stderr = NULL,
+  poll_connection = TRUE,
+  error = getOption("callr.error", "error"),
+  cmdargs = c("--slave", "--no-save", "--no-restore"),
+  show = FALSE,
+  callback = NULL,
+  block_callback = NULL,
+  spinner = show && interactive(),
+  system_profile = FALSE,
+  user_profile = "project",
+  env = rcmd_safe_env(),
+  timeout = Inf,
+  ...
+)
 
-r_safe(func, args = list(), libpath = .libPaths(),
-  repos = default_repos(), stdout = NULL, stderr = NULL,
-  poll_connection = TRUE, error = getOption("callr.error", "error"),
-  cmdargs = c("--slave", "--no-save", "--no-restore"), show = FALSE,
-  callback = NULL, block_callback = NULL, spinner = show &&
-  interactive(), system_profile = FALSE, user_profile = FALSE,
-  env = rcmd_safe_env(), timeout = Inf, ...)
+r_safe(
+  func,
+  args = list(),
+  libpath = .libPaths(),
+  repos = default_repos(),
+  stdout = NULL,
+  stderr = NULL,
+  poll_connection = TRUE,
+  error = getOption("callr.error", "error"),
+  cmdargs = c("--slave", "--no-save", "--no-restore"),
+  show = FALSE,
+  callback = NULL,
+  block_callback = NULL,
+  spinner = show && interactive(),
+  system_profile = FALSE,
+  user_profile = "project",
+  env = rcmd_safe_env(),
+  timeout = Inf,
+  ...
+)
 }
 \arguments{
 \item{func}{Function object to call in the new R process.
@@ -64,7 +90,7 @@ string \code{"2>&1"}, then standard error is redirected to standard output.}
 
 \item{poll_connection}{Whether to have a control connection to
 the process. This is used to transmit messages from the subprocess
-to the parent.}
+to the main process.}
 
 \item{error}{What to do if the remote process throws an error.
 See details below.}
@@ -95,7 +121,11 @@ the child R session is running. By default it is shown if
 
 \item{system_profile}{Whether to use the system profile file.}
 
-\item{user_profile}{Whether to use the user's profile file.}
+\item{user_profile}{Whether to use the user's profile file.
+If this is \code{"project"}, then only the profile from the working
+directory is used, but the \code{R_PROFILE_USER} environment variable
+and the user level profile are not. See also "Security considerations"
+below.}
 
 \item{env}{Environment variables to set for the child process.}
 
@@ -133,17 +163,18 @@ The \code{r()} function from before 2.0.0 is called \code{\link[=r_copycat]{r_co
 
 \code{callr} handles errors properly. If the child process throws an
 error, then \code{callr} throws an error with the same error message
-in the parent process.
+in the main process.
 
 The \code{error} expert argument may be used to specify a different
 behavior on error. The following values are possible:
 \itemize{
-\item \code{error} is the default behavior: throw an error in the parent, with
-the same error message. In fact the same error object is thrown again.
-\item \code{stack} also throws an error in the parent, but the error
+\item \code{error} is the default behavior: throw an error in the main process,
+with a prefix and the same error message as in the subprocess.
+\item \code{stack} also throws an error in the main process, but the error
 is of a special kind, class \code{callr_error}, and it contains
 both the original error object, and the call stack of the child,
-as written out by \code{\link[utils:dump.frames]{utils::dump.frames()}}.
+as written out by \code{\link[utils:dump.frames]{utils::dump.frames()}}. This is now deprecated,
+because the error thrown for \code{"error"} has the same information.
 \item \code{debugger} is similar to \code{stack}, but in addition
 to returning the complete call stack, it also start up a debugger
 in the child call stack, via \code{\link[utils:debugger]{utils::debugger()}}.
@@ -151,6 +182,21 @@ in the child call stack, via \code{\link[utils:debugger]{utils::debugger()}}.
 
 The default error behavior can be also set using the \code{callr.error}
 option. This is useful to debug code that uses \code{callr}.
+
+callr uses parent errors, to keep the stacks of the main process and the
+subprocess(es) in the same error object.
+}
+
+\section{Security considerations}{
+
+
+\code{callr} makes a copy of the user's \code{.Renviron} file and potentially of
+the local or user \code{.Rprofile}, in the session temporary
+directory. Avoid storing sensitive information such as passwords, in
+your environment file or your profile, otherwise this information will
+get scattered in various files, at least temporarily, until the
+subprocess finishes. You can use the keyring package to avoid passwords
+in plain files.
 }
 
 \examples{
@@ -165,7 +211,8 @@ r(function() .libPaths())
 
 }
 \seealso{
-Other callr functions: \code{\link{r_copycat}},
-  \code{\link{r_vanilla}}
+Other callr functions: 
+\code{\link{r_copycat}()},
+\code{\link{r_vanilla}()}
 }
 \concept{callr functions}

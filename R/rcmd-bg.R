@@ -4,6 +4,7 @@
 #' The child process is started in the background, and the function
 #' return immediately.
 #'
+#' @inheritSection r Security considerations
 #' @inheritParams rcmd
 #' @param supervise Whether to register the process with a supervisor. If \code{TRUE},
 #'   the supervisor will ensure that the process is killed when the R process
@@ -19,7 +20,7 @@ rcmd_bg <- function(cmd, cmdargs = character(), libpath = .libPaths(),
                     stdout = "|", stderr = "|",
                     poll_connection = TRUE,
                     repos = default_repos(),
-                    system_profile = FALSE, user_profile = FALSE,
+                    system_profile = FALSE, user_profile = "project",
                     env = rcmd_safe_env(), wd = ".",
                     supervise = FALSE, ...) {
 

@@ -59,35 +59,32 @@ get_result <- function(output, options) {
   ## The error RDS might be corrupt, too, if we crashed/got killed after
   ## an error
   tryCatch(
-    err <- readRDS(errorres),
+    remerr <- readRDS(errorres),
     error = function(e) throw(new_callr_error(output, killmsg))
   )
 
-  if (err[[1]] == "error") {
-    err[[2]]$message <- err[[2]]$message %||% "interrupt"
-    msg <- conditionMessage(err[[2]])
-    class(err[[2]]) <- c("callr_remote_error", class(err[[2]]))
-    if (!is.null(err[[2]]$trace)) {
-      class(err[[2]]$trace) <- c("callr_remote_trace", class(err[[2]]$trace))
-    }
-    throw(new_callr_error(output, msg), parent = err[[2]])
+  if (remerr[[1]] == "error") {
+    remerr[[2]]$message <- remerr[[2]]$message %||% "interrupt"
+    msg <- conditionMessage(remerr[[2]]$error)
+    newerr <- new_callr_error(output, msg)
+    throw(newerr, parent = remerr[[2]])
 
-  } else if (err[[1]] == "stack") {
+  } else if (remerr[[1]] == "stack") {
     myerr <- structure(
       list(
-        message = conditionMessage(err[[2]]),
-        call = conditionCall(err[[2]]),
-        stack = clean_stack(err[[3]])
+        message = conditionMessage(remerr[[2]]),
+        call = conditionCall(remerr[[2]]),
+        stack = clean_stack(remerr[[3]])
       ),
       class = c("callr_error", "error", "condition")
     )
     throw(myerr)
 
-  } else if (err[[1]] == "debugger") {
-    utils::debugger(clean_stack(err[[3]]))
+  } else if (remerr[[1]] == "debugger") {
+    utils::debugger(clean_stack(remerr[[3]]))
 
   } else {
-    throw(new_error("Unknown callr error strategy: ", err[[1]])) # nocov
+    throw(new_error("Unknown callr error strategy: ", remerr[[1]])) # nocov
   }
 }
 

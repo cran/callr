@@ -4,6 +4,7 @@
 #' Starts evaluating an R function call in a background R process, and
 #' returns immediately.
 #'
+#' @inheritSection r Security considerations
 #' @inheritParams r
 #' @param supervise Whether to register the process with a supervisor. If \code{TRUE},
 #'   the supervisor will ensure that the process is killed when the R process
@@ -31,7 +32,7 @@ r_bg <- function(func, args = list(), libpath = .libPaths(),
                  poll_connection = TRUE,
                  error = getOption("callr.error", "error"),
                  cmdargs = c("--slave", "--no-save", "--no-restore"),
-                 system_profile = FALSE, user_profile = FALSE,
+                 system_profile = FALSE, user_profile = "project",
                  env = rcmd_safe_env(), supervise = FALSE, ...) {
 
   options <- as.list(environment())

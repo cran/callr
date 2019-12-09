@@ -19,6 +19,8 @@ env_file <- NULL
   env <- new.env(parent = emptyenv())
   env$`__callr_data__` <- new.env(parent = baseenv())
 
+  err$onload_hook()
+
   # We need some R code in the subprocess, we parse it here, so the
   # subprocess just needs to load it. This code will also load the
   # shared lib of the compiled functions that we need.
@@ -55,7 +57,11 @@ env_file <- NULL
 
   env$`__callr_data__`$sofile <- sofile
 
-  env_file <<- tempfile()
+  env_file <<- tempfile("callr-env-")
   saveRDS(env, file = env_file, version = 2, compress = FALSE)
   invisible()
+}
+
+.onUnload <- function(libpath) {
+  if (!is.null(env_file)) unlink(env_file)
 }

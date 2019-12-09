@@ -4,6 +4,7 @@
 #' It uses the `Rscript` program corresponding to the current R version,
 #' to run the script. It streams `stdout` and `stderr` of the process.
 #'
+#' @inheritSection r Security considerations
 #' @inheritParams rcmd
 #' @param script Path of the script to run.
 #' @param color Whether to use terminal colors in the child process,
@@ -16,7 +17,7 @@ rscript <- function(script, cmdargs = character(), libpath = .libPaths(),
                     stdout = NULL, stderr = NULL,
                     poll_connection = TRUE, echo = FALSE, show = TRUE,
                     callback = NULL, block_callback = NULL, spinner = FALSE,
-                    system_profile = FALSE, user_profile = FALSE,
+                    system_profile = FALSE, user_profile = "project",
                     env = rcmd_safe_env(), timeout = Inf, wd = ".",
                     fail_on_status = TRUE, color = TRUE, ...) {
 
@@ -29,6 +30,9 @@ rscript <- function(script, cmdargs = character(), libpath = .libPaths(),
   options <- setup_callbacks(options)
 
   options <- setup_rscript_binary_and_args(options)
+
+  ## This cleans up everything...
+  on.exit(unlink(options$tmp_files, recursive = TRUE), add = TRUE)
 
   invisible(run_r(options))
 }
@@ -84,7 +88,11 @@ rscript_process <- R6::R6Class(
   inherit = processx::process,
   public = list(
     initialize = function(options)
-      rscript_init(self, private, super, options)
+      rscript_init(self, private, super, options),
+    finalize = function() {
+      unlink(private$options$tmp_files, recursive = TRUE)
+      if ("finalize" %in% ls(super)) super$finalize()
+    }
   ),
   private = list(
     options = NULL

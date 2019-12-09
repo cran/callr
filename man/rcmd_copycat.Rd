@@ -2,10 +2,16 @@
 % Please edit documentation in R/rcmd.R
 \name{rcmd_copycat}
 \alias{rcmd_copycat}
-\title{Call and \code{R CMD} command, while mimicking the current R session}
+\title{Call and \verb{R CMD} command, while mimicking the current R session}
 \usage{
-rcmd_copycat(cmd, cmdargs = character(), libpath = .libPaths(),
-  repos = getOption("repos"), env = character(), ...)
+rcmd_copycat(
+  cmd,
+  cmdargs = character(),
+  libpath = .libPaths(),
+  repos = getOption("repos"),
+  env = character(),
+  ...
+)
 }
 \arguments{
 \item{cmd}{Command to run. See \code{R --help} from the command
@@ -35,8 +41,21 @@ defaults:
 \item No extra environment variables are defined.
 }
 }
+\section{Security considerations}{
+
+
+\code{callr} makes a copy of the user's \code{.Renviron} file and potentially of
+the local or user \code{.Rprofile}, in the session temporary
+directory. Avoid storing sensitive information such as passwords, in
+your environment file or your profile, otherwise this information will
+get scattered in various files, at least temporarily, until the
+subprocess finishes. You can use the keyring package to avoid passwords
+in plain files.
+}
+
 \seealso{
-Other R CMD commands: \code{\link{rcmd_bg}},
-  \code{\link{rcmd}}
+Other R CMD commands: 
+\code{\link{rcmd_bg}()},
+\code{\link{rcmd}()}
 }
 \concept{R CMD commands}
