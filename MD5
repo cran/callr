@@ -1,7 +1,7 @@
-6537a7d480434524dd740d918b1f27a2 *DESCRIPTION
+93e5b7dad743d22178693c8d2f8f3d54 *DESCRIPTION
 09079911e7389192b5cd3b99be725742 *LICENSE
 3baef32ac7c4d289985d487f57a94512 *NAMESPACE
-80a67a6a885aa609969f9c40f331f89b *NEWS.md
+378d7386c39fe3ff351ee371c7d85e07 *NEWS.md
 bf329d47884a37b82c49a40b67a31a20 *R/check.R
 6b55c82209a6b03098dbf3a1132700c3 *R/error.R
 e06bb11232b19c6487ca17bde83949ad *R/errors.R
@@ -9,7 +9,7 @@ ff77f3f52971c65b54e1ada235009e5b *R/eval-bg.R
 9918a21dcf00c435d23493a849205e8a *R/eval.R
 9a30d31af73d178adeb4daa1694c9ea9 *R/hook.R
 336d4f3703a16cc7d947b03f444c9629 *R/options.R
-cc3fb7dedf9ee67d55635f2ca10265ad *R/package.R
+92ea4dd6ad0d399704a243c03f3f8ce2 *R/package.R
 78e3e4c067e60a42b21d386b88ccf91b *R/presets.R
 57e46eb271bbc3020eb4c7bf45fa5625 *R/processx-forward.R
 b25c8314bed7881c36b13b18d6e64daf *R/r-process.R
@@ -22,7 +22,7 @@ de7e716d909839b405373013b24120c1 *R/rscript.R
 fbd5775d259e9d8aa802aa9f873c19fa *R/run.R
 74f2180c4a387d8e2410be1f28a8ab48 *R/script.R
 f07014e7e7546a7b5ec93638e3544197 *R/setup.R
-e349c5415f2b6f1e5183fad062e6927b *R/utils.R
+6c9bc8faa2a263cefed97debf24659b7 *R/utils.R
 8517bdc6166e7f11ef1cfb4311288478 *README.md
 dd7cf8f57b58c27538969b7bb67ab900 *inst/WORDLIST
 bce3dcfc9c8ac346c1099a16f4e1fe9d *inst/client.R
@@ -53,7 +53,7 @@ a8ff8166697f777e8fe0c7c0261ad297 *man/reexports.Rd
 3c49637819a3fa25af67506d531dfc42 *man/rscript.Rd
 ba98298ee68c78bc29c99e680499679a *man/rscript_process.Rd
 9bab7ad4390b7863be4cdb0afcf3de5f *man/rscript_process_options.Rd
-023f6385e586b4c824395a818388d54f *tests/testthat.R
+f10c2f476481e6b6af2636b6387e9612 *tests/testthat.R
 109be60c7f5501f2f255c3a7dd0d01cc *tests/testthat/fixtures/D1
 12a5442aa928a92aa446356fb4a209a8 *tests/testthat/fixtures/csomag/DESCRIPTION
 d41d8cd98f00b204e9800998ecf8427e *tests/testthat/fixtures/csomag/NAMESPACE
