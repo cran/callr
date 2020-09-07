@@ -31,6 +31,18 @@ r_session <- R6::R6Class(
 
   public = list(
 
+    #' @field status
+    #' Status codes returned by `read()`.
+    status = list(
+      DONE        = 200L,
+      STARTED     = 201L,
+      ATTACH_DONE = 202L,
+      MSG         = 301L,
+      EXITED      = 500L,
+      CRASHED     = 501L,
+      CLOSED      = 502L
+    ),
+
     #' @description
     #' creates a new R background process. It can wait for the process to
     #' start up (`wait = TRUE`), or return immediately, i.e. before
@@ -120,19 +132,23 @@ r_session <- R6::R6Class(
     #'
     #' @return `NULL` if no events are available. Otherwise a named list,
     #'   which is also a `callr_session_result` object. The list always has
-    #'   a `code` entry which is the type of the event. Event types:
-    #'   * `200`: The computation is done, and the event includes the
-    #'      result, in the same form as for the `run()` method.
-    #'   * `201`: An R session that was in 'starting' state is ready to go.
-    #'   * `202`: Used by the `attach()` method.
-    #'   * `301`: A message from the subprocess. The message is a condition
-    #'      object with class `callr_message`. (It typically has other
-    #'      classes, e.g. `cli_message` for output from the cli package.
-    #'   * `500`: The R session finished cleanly. This means that the
-    #'      evaluated expression quit R.
-    #'   * `501`: The R session crashed or was killed.
-    #'   * `502`: The R session closed its end of the connection that
-    #'      callr uses for communication.
+    #'   a `code` entry which is the type of the event. See also
+    #'   `r_session$public_fields$status` for symbolic names of the
+    #'   event types.
+    #'   * `200`: (`DONE`) The computation is done, and the event includes
+    #'      the result, in the same form as for the `run()` method.
+    #'   * `201`: (`STARTED`) An R session that was in 'starting' state is
+    #'      ready to go.
+    #'   * `202`: (`ATTACH_DONE`) Used by the `attach()` method.
+    #'   * `301`: (`MSG`) A message from the subprocess. The message is a
+    #'      condition object with class `callr_message`. (It typically has
+    #'      other classes, e.g. `cli_message` for output from the cli
+    #'      package.
+    #'   * `500`: (`EXITED`) The R session finished cleanly. This means
+    #'      that the evaluated expression quit R.
+    #'   * `501`: (`CRASHED`) The R session crashed or was killed.
+    #'   * `502`: (`CLOSED`) The R session closed its end of the connection
+    #'      that callr uses for communication.
 
     read = function()
       rs_read(self, private),
@@ -206,8 +222,8 @@ r_session <- R6::R6Class(
     func_file = NULL,
     res_file = NULL,
 
-    get_result_and_output = function()
-      rs__get_result_and_output(self, private),
+    get_result_and_output = function(std = FALSE)
+      rs__get_result_and_output(self, private, std),
     report_back = function(code, text = "")
       rs__report_back(self, private, code, text),
     write_for_sure = function(text)
@@ -261,7 +277,18 @@ rs_init <- function(self, private, super, options, wait, wait_timeout) {
     }
 
     if (pr["process"] == "ready") {
-      self$read()
+      msg <- self$read()
+      out <- paste0(out, msg$stdout)
+      err <- paste0(err, msg$stderr)
+      if (msg$code != 201) {
+        data <- list(
+          status = self$get_exit_status(),
+          stdout = out,
+          stderr = err,
+          timeout = FALSE
+        )
+        throw(new_callr_error(data, "Failed to start R session"))
+      }
     } else if (pr["process"] != "ready") {
       cat("stdout:]\n", out, "\n")
       cat("stderr:]\n", err, "\n")
@@ -277,7 +304,8 @@ rs_read <- function(self, private) {
   if (!length(out)) {
     if (processx::processx_conn_is_incomplete(private$pipe)) return()
     if (self$is_alive()) {
-      self$kill()
+      # We do this in on.exit(), because parse_msg still reads the streams
+      on.exit(self$kill(), add = TRUE)
       out <- "502 R session closed the process connection, killed"
     } else if (identical(es <- self$get_exit_status(), 0L)) {
       out <- "500 R session finished cleanly"
@@ -314,17 +342,17 @@ rs_call <- function(self, private, func, args) {
   private$options$func <- func
   private$options$args <- args
   private$options$func_file <- save_function_to_temp(private$options)
-  private$options$result_file <- tempfile()
+  private$options$result_file <- tempfile("callr-rs-result-")
   private$options$tmp_files <-
     c(private$options$tmp_files, private$options$func_file,
       private$options$result_file)
 
   ## Maybe we need to redirect stdout / stderr
   re_stdout <- if (is.null(private$options$stdout)) {
-    private$tmp_output_file <- tempfile()
+    private$tmp_output_file <- tempfile("callr-rs-stdout-")
   }
   re_stderr <- if (is.null(private$options$stderr)) {
-    private$tmp_error_file <- tempfile()
+    private$tmp_error_file <- tempfile("callr-rs-stderr-")
   }
 
   pre <- rs__prehook(re_stdout, re_stderr)
@@ -597,7 +625,7 @@ rs__parse_msg_funcs[["301"]] <- function(self, private, code, message) {
 
 rs__parse_msg_funcs[["500"]] <- function(self, private, code, message) {
   private$state <- "finished"
-  res <- private$get_result_and_output()
+  res <- private$get_result_and_output(std = TRUE)
   c(list(code = code, message = message), res)
 }
 
@@ -606,7 +634,7 @@ rs__parse_msg_funcs[["501"]] <- function(self, private, code, message) {
   err <- structure(
     list(message = message),
     class = c("error", "condition"))
-  res <- private$get_result_and_output()
+  res <- private$get_result_and_output(std = TRUE)
   res$error <- err
   c(list(code = code, message = message), res)
 }
@@ -659,18 +687,22 @@ rs__posthook <- function(stdout, stderr) {
   substitute({ o; e }, list(o = oexpr, e = eexpr))
 }
 
-rs__get_result_and_output <- function(self, private) {
+rs__get_result_and_output <- function(self, private, std) {
 
   ## Get stdout and stderr
   stdout <- if (!is.null(private$tmp_output_file) &&
              file.exists(private$tmp_output_file)) {
     tryCatch(suppressWarnings(read_all(private$tmp_output_file)),
              error = function(e) "")
+  } else if (std && self$has_output_connection()) {
+    tryCatch(self$read_all_output(), error = function(err) NULL)
   }
   stderr <- if (!is.null(private$tmp_error_file) &&
              file.exists(private$tmp_error_file)) {
     tryCatch(suppressWarnings(read_all(private$tmp_error_file)),
              error = function(e) "")
+  } else if (std && self$has_error_connection()) {
+    tryCatch(self$read_all_error(), error = function(err) NULL)
   }
   unlink(c(private$tmp_output_file, private$tmp_error_file))
   private$tmp_output_file <- private$tmp_error_file <- NULL
@@ -740,7 +772,12 @@ r_session_options_default <- function() {
     stdout = NULL,
     stderr = NULL,
     error = getOption("callr.error", "error"),
-    cmdargs = c("--no-readline", "--slave", "--no-save", "--no-restore"),
+    cmdargs = c(
+      if (os_platform() != "windows") "--no-readline",
+      "--slave",
+      "--no-save",
+      "--no-restore"
+    ),
     system_profile = FALSE,
     user_profile = "project",
     env = c(TERM = "dumb"),

@@ -6,10 +6,6 @@
 \description{
 An \verb{R CMD *} command that runs in the background. This is an R6 class
 that extends the \link[processx:process]{processx::process} class.
-
-\if{html}{\out{<link rel="stylesheet" type="text/css" href="../doc/assets/extra.css">}}
-
-\if{html}{\out{<script src="../doc/assets/rd.js"></script>}}
 }
 \examples{
 \dontshow{if (FALSE) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
@@ -86,6 +82,7 @@ rp$read_output_lines()
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-new"></a>}}
+\if{latex}{\out{\hypertarget{method-new}{}}}
 \subsection{Method \code{new()}}{
 Start an \verb{R CMD} process.
 \subsection{Usage}{
@@ -106,6 +103,7 @@ A new \code{rcmd_process} object.
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-finalize"></a>}}
+\if{latex}{\out{\hypertarget{method-finalize}{}}}
 \subsection{Method \code{finalize()}}{
 Clean up the temporary files created for an \verb{R CMD} process.
 \subsection{Usage}{
@@ -115,6 +113,7 @@ Clean up the temporary files created for an \verb{R CMD} process.
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-clone"></a>}}
+\if{latex}{\out{\hypertarget{method-clone}{}}}
 \subsection{Method \code{clone()}}{
 The objects of this class are cloneable with this method.
 \subsection{Usage}{
