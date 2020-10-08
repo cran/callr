@@ -71,7 +71,7 @@ test_that("libpath in system(), empty .Renviron", {
   dir.create(tmpkeep <- tempfile("keep"))
   on.exit(unlink(c(tmpdrop, tmpkeep), recursive = TRUE), add  = TRUE)
 
-  withr::local_tempfile("tmpenv")
+  tmpenv <- withr::local_tempfile()
   cat("", file = tmpenv)
   withr::local_envvar(c(R_ENVIRON_USER = tmpenv))
 
@@ -93,7 +93,7 @@ test_that("libpath in system, R_LIBS in .Renviron", {
   dir.create(tmpkeep <- tempfile("keep"))
   on.exit(unlink(c(tmpdrop, tmpkeep), recursive = TRUE), add  = TRUE)
 
-  withr::local_tempfile("tmpenv")
+  tmpenv <- withr::local_tempfile()
   cat("R_LIBS=\"", tmpdrop, "\"\n", sep = "", file = tmpenv)
   withr::local_envvar(c(R_ENVIRON_USER = tmpenv))
 
@@ -116,7 +116,7 @@ test_that("libpath in system, R_LIBS", {
   dir.create(tmpkeep <- tempfile("keep"))
   on.exit(unlink(c(tmpdrop, tmpkeep), recursive = TRUE), add  = TRUE)
 
-  withr::local_tempfile("tmpenv")
+  tmpenv <- withr::local_tempfile()
   cat("", file = tmpenv)
   withr::local_envvar(c(R_ENVIRON_USER = tmpenv, R_LIBS=tmpdrop))
 
@@ -139,7 +139,7 @@ test_that("libpath in system, R_LIBS and .Renviron", {
   dir.create(tmpkeep <- tempfile("keep"))
   on.exit(unlink(c(tmpdrop, tmpkeep), recursive = TRUE), add  = TRUE)
 
-  withr::local_tempfile("tmpenv")
+  tmpenv <-  withr::local_tempfile()
   cat("R_LIBS=\"", tmpdrop, "\"\n", sep = "", file = tmpenv)
   withr::local_envvar(c(R_ENVIRON_USER = tmpenv, R_LIBS=tmpdrop))
 
@@ -201,32 +201,6 @@ test_that("libpath in system, if subprocess changes R_LIBS #2", {
 
   out <- callr::r(f, list(rbin = rbin, new = tmpkeep))
   expect_true(any(grepl(basename(normalizePath(tmpkeep)), out)))
-
-  ## Close FDs
-  gc()
-})
-
-test_that("libpath in system, in R CMD INSTALL", {
-  skip_on_cran()
-
-  csomag <- test_path("fixtures","csomag")
-  tmplib <- tempfile()
-  dir.create(tmplib)
-  on.exit(unlink(tmplib, recursive = TRUE), add = TRUE)
-  dump <- tempfile(fileext = ".rds")
-  on.exit(unlink(dump), add = TRUE)
-
-  out <- callr::r(function(pkg, lib, savefile) {
-    Sys.setenv(CALLR_DUMP_HERE = savefile)
-    ## We need to do this, otherwise install.packages() only keeps the
-    ## first library
-    Sys.unsetenv("_R_CHECK_INSTALL_DEPENDS_")
-    install.packages(pkg, lib = lib, repos = NULL, type = "source")
-  }, list(csomag, tmplib, dump))
-
-  data <- readRDS(dump)
-  ## We test the basename, in case a normalizePath makes dirnames differ
-  expect_true(basename(tmplib) %in% basename(data$libpaths))
 
   ## Close FDs
   gc()

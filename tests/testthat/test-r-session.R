@@ -219,7 +219,10 @@ test_that("crash", {
     error = function(e) e)
   expect_true(
     grepl("crashed with exit code", conditionMessage(err)) ||
-    grepl("R session closed the process connection", conditionMessage(err)))
+    grepl("R session closed the process connection", conditionMessage(err)) ||
+    grepl("Invalid (uninitialized or closed?) connection object",
+          conditionMessage(err), fixed = TRUE)
+  )
   expect_false(rs$is_alive())
   expect_equal(rs$get_state(), "finished")
   rs$close()
@@ -267,7 +270,7 @@ test_that("traceback", {
 
   expect_error(rs$run(do), "oops")
   expect_output(tb <- rs$traceback(), "1: \"?f()\"?")
-  if (getRversion() >= "3.3.0") {
+  if (getRversion() >= "3.3.0" && getRversion() <= "4.0.0") {
     expect_match(c(tb[[4]]), "f()", fixed = TRUE)
   }
 })
