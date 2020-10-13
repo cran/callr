@@ -1,7 +1,7 @@
-f4cbb48877eff90c41b56a1e3057a815 *DESCRIPTION
+4f215bed489b351dd31a6456f3033c85 *DESCRIPTION
 09079911e7389192b5cd3b99be725742 *LICENSE
 3baef32ac7c4d289985d487f57a94512 *NAMESPACE
-ad407f70ae50469a9926464e6234c17a *NEWS.md
+a97419b04c09a906e75b7eb6d578b152 *NEWS.md
 70a6e6ee76238c05dde85ba0e9e711d8 *R/check.R
 6b55c82209a6b03098dbf3a1132700c3 *R/error.R
 e06bb11232b19c6487ca17bde83949ad *R/errors.R
@@ -13,14 +13,14 @@ d1c2bcddce2a0fc7d2d0a274a9c19f8b *R/package.R
 78e3e4c067e60a42b21d386b88ccf91b *R/presets.R
 57e46eb271bbc3020eb4c7bf45fa5625 *R/processx-forward.R
 b25c8314bed7881c36b13b18d6e64daf *R/r-process.R
-8b910070e97ca29093feff0a307229b4 *R/r-session.R
+4cd568cbe95eacd42f2b7fa8b887a2db *R/r-session.R
 41320594a9a458d32e823ab1fac2bb0f *R/rcmd-bg.R
 ae4070b19c1a01b9bbf4e77e00b76f77 *R/rcmd-process.R
 e5c926bf46c486672586dd6e9f3d8a8b *R/rcmd.R
 704c3106ef21e8daa2074f13f5e60c92 *R/result.R
 de7e716d909839b405373013b24120c1 *R/rscript.R
 fbd5775d259e9d8aa802aa9f873c19fa *R/run.R
-74f2180c4a387d8e2410be1f28a8ab48 *R/script.R
+8686e838d9a4bc79a1df29a778ac71df *R/script.R
 66cd515ddcab46a3ca915d8ed6850c05 *R/setup.R
 3c8e72e5afcb8158909c7f813a18ad4d *R/utils.R
 acb47408e2d94eebb6eb649ede4190a3 *README.md
@@ -73,7 +73,7 @@ c6352f50cbdd7242a9524e759ea02003 *tests/testthat/test-messages.R
 6965462e84301519ac3c87bc266df793 *tests/testthat/test-quit.R
 d0dda24e3747c6a952b3a5555662c344 *tests/testthat/test-r-bg.R
 9523280f938b491366dae48ffa63455c *tests/testthat/test-r-process.R
-e31c6973647c8934cb8f9facd2051b3b *tests/testthat/test-r-session-messages.R
+c5b42ea0959baff45b0bc243c789cb0e *tests/testthat/test-r-session-messages.R
 37c6ec246e32a446373e7f0d9a0cc202 *tests/testthat/test-r-session.R
 6ee62f3bad58f00199abbe84d5bb7b96 *tests/testthat/test-rcmd-bg.R
 93d8c399ae5dde1e886c2a9dd83166a2 *tests/testthat/test-rcmd-process.R
