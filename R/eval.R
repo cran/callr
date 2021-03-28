@@ -3,11 +3,10 @@
 #'
 #' From `callr` version 2.0.0, `r()` is equivalent to `r_safe()`, and
 #' tries to set up a less error prone execution environment. In particular:
-#' * It makes sure that at least one reasonable CRAN mirror is set up.
-#' * Adds some command line arguments are added to avoid saving
-#'   `.RData` files, etc.
-#' * Ignores the system and user profiles.
-#' * Various environment variables are set: `CYGWIN` to avoid
+#' * Ensures that at least one reasonable CRAN mirror is set up.
+#' * Adds some command line arguments to avoid saving `.RData` files, etc.
+#' * Ignores the system and user profiles (by default).
+#' * Sets various environment variables: `CYGWIN` to avoid
 #'   warnings about DOS-style paths, `R_TESTS` to avoid issues
 #'   when `callr` is invoked from unit tests, `R_BROWSER`
 #'   and `R_PDFVIEWER` to avoid starting a browser or a PDF viewer.
@@ -93,6 +92,11 @@
 #'   * `FALSE`: reset the environment to `.GlobalEnv`. This is the default.
 #'   * `TRUE`: keep the environment as is.
 #'   * `pkg`: set the environment to the `pkg` package namespace.
+#' @param arch Architecture to use in the child process, for multi-arch
+#'   builds of R. By default the same as the main process. See
+#'   [supported_archs()]. If it contains a forward or backward slash
+#'   character, then it is taken as the path to the R executable.
+#'   Note that on Windows you need the path to `Rterm.exe`.
 #' @param ... Extra arguments are passed to [processx::run()].
 #' @return Value of the evaluated expression.
 #'
@@ -119,7 +123,7 @@
 #' option. This is useful to debug code that uses `callr`.
 #'
 #' callr uses parent errors, to keep the stacks of the main process and the
-#' subprocess(es) in the same error object. 
+#' subprocess(es) in the same error object.
 #'
 #' @section Security considerations:
 #'
@@ -151,7 +155,8 @@ r <- function(func, args = list(), libpath = .libPaths(),
               show = FALSE, callback = NULL,
               block_callback = NULL, spinner = show && interactive(),
               system_profile = FALSE, user_profile = "project",
-              env = rcmd_safe_env(), timeout = Inf, package = FALSE, ...) {
+              env = rcmd_safe_env(), timeout = Inf, package = FALSE,
+              arch = "same", ...) {
 
   ## This contains the context that we set up in steps
   options <- convert_and_check_my_args(as.list(environment()))

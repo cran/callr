@@ -210,6 +210,8 @@ test_that("cleans up temp files", {
 
     result <- callr::r(function() 1+1)
 
+    unloadNamespace("callr")
+
     new <- setdiff(dir(tempdir(), "^callr-"), old)
 
     list(result = result, new = new)
@@ -245,4 +247,11 @@ test_that("local .Rprofile is not loaded from actual wd", {
   cat("aa <- 123\n", file = ".Rprofile")
   out <- callr::r(function() ls(.GlobalEnv), wd = wd2)
   expect_equal(out, character())
+})
+
+test_that("symbolic arguments are protected", {
+  expect_equal(
+    callr::r(function(x) x, list(x = quote(foobar))),
+    quote(foobar)
+  )
 })

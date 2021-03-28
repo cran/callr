@@ -24,6 +24,7 @@ r(
   env = rcmd_safe_env(),
   timeout = Inf,
   package = FALSE,
+  arch = "same",
   ...
 )
 
@@ -46,6 +47,7 @@ r_safe(
   env = rcmd_safe_env(),
   timeout = Inf,
   package = FALSE,
+  arch = "same",
   ...
 )
 }
@@ -146,6 +148,12 @@ it to the other package. Possible values are:
 \item \code{pkg}: set the environment to the \code{pkg} package namespace.
 }}
 
+\item{arch}{Architecture to use in the child process, for multi-arch
+builds of R. By default the same as the main process. See
+\code{\link[=supported_archs]{supported_archs()}}. If it contains a forward or backward slash
+character, then it is taken as the path to the R executable.
+Note that on Windows you need the path to \code{Rterm.exe}.}
+
 \item{...}{Extra arguments are passed to \code{\link[processx:run]{processx::run()}}.}
 }
 \value{
@@ -155,11 +163,10 @@ Value of the evaluated expression.
 From \code{callr} version 2.0.0, \code{r()} is equivalent to \code{r_safe()}, and
 tries to set up a less error prone execution environment. In particular:
 \itemize{
-\item It makes sure that at least one reasonable CRAN mirror is set up.
-\item Adds some command line arguments are added to avoid saving
-\code{.RData} files, etc.
-\item Ignores the system and user profiles.
-\item Various environment variables are set: \code{CYGWIN} to avoid
+\item Ensures that at least one reasonable CRAN mirror is set up.
+\item Adds some command line arguments to avoid saving \code{.RData} files, etc.
+\item Ignores the system and user profiles (by default).
+\item Sets various environment variables: \code{CYGWIN} to avoid
 warnings about DOS-style paths, \code{R_TESTS} to avoid issues
 when \code{callr} is invoked from unit tests, \code{R_BROWSER}
 and \code{R_PDFVIEWER} to avoid starting a browser or a PDF viewer.
@@ -210,16 +217,6 @@ subprocess finishes. You can use the keyring package to avoid passwords
 in plain files.
 }
 
-\examples{
-\dontshow{if (FALSE) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
-# Workspace is empty
-r(function() ls())
-
-# library path is the same by default
-r(function() .libPaths())
-.libPaths()
-\dontshow{\}) # examplesIf}
-}
 \seealso{
 Other callr functions: 
 \code{\link{r_copycat}()},

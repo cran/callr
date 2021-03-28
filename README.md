@@ -6,6 +6,7 @@
 > Call R from R
 
 <!-- badges: start -->
+[![lifecycle](https://lifecycle.r-lib.org/articles/figures/lifecycle-stable.svg)](https://lifecycle.r-lib.org/articles/stages.html)
 [![R build status](https://github.com/r-lib/callr/workflows/R-CMD-check/badge.svg)](https://github.com/r-lib/callr/actions)
 [![](https://www.r-pkg.org/badges/version/callr)](https://www.r-pkg.org/pkg/callr)
 [![CRAN RStudio mirror downloads](https://cranlogs.r-pkg.org/badges/callr)](https://www.r-pkg.org/pkg/callr)
@@ -123,7 +124,7 @@ r(function() { g <- igraph::sample_gnp(1000, 4/1000); igraph::diameter(g) })
 
 ### Error handling
 
-callr\` copies errors from the child process back to the main R session:
+callr copies errors from the child process back to the main R session:
 
 ``` r
 r(function() 1 + "A")
@@ -141,7 +142,9 @@ both from the main R process and the subprocess.
 
     #> <callr_status_error: callr subprocess failed: non-numeric argument to binary operator>
     #> -->
-    #> <callr_remote_error in 1 + "A": non-numeric argument to binary operator>
+    #> <callr_remote_error in 1 + "A":
+    #>  non-numeric argument to binary operator>
+    #>  in process 32169
 
 The error objects has two parts. The first belongs to the main process,
 and the second belongs to the subprocess.
@@ -154,7 +157,7 @@ process and the subprocess:
 ```
 
     #> 
-    #>  ERROR TRACE for callr_status_error, callr_error, rlib_error
+    #>  Stack trace:
     #> 
     #>  Process 31908:
     #>  38. callr:::r(function() 1 + "A")
@@ -256,7 +259,7 @@ function call. Some of the handiest methods are:
 
 -   `get_exit_status()` to query the exit status of a finished process.
 -   `get_result()` to collect the return value of the R function call.
--   `intertupt()` to send an interrupt to the process. This is
+-   `interrupt()` to send an interrupt to the process. This is
     equivalent to a `CTRL+C` key press, and the R process might ignore it.
 -   `is_alive()` to check if the process is alive.
 -   `kill()` to terminate the process.

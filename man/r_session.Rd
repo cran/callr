@@ -10,20 +10,6 @@ that extends the \link[processx:process]{processx::process} class.
 The process is started at the creation of the object, and then it can
 be used to evaluate R function calls, one at a time.
 }
-\examples{
-\dontshow{if (FALSE) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
-rs <- r_ression$new()
-
-rs$run(function() 1 + 2)
-
-rs$call(function() Sys.sleep(1))
-rs$get_state()
-
-rs$poll_process(-1)
-rs$get_state()
-rs$read()
-\dontshow{\}) # examplesIf}
-}
 \section{Super class}{
 \code{\link[processx:process]{processx::process}} -> \code{r_session}
 }
@@ -328,7 +314,7 @@ ready to go.
 \item \code{301}: (\code{MSG}) A message from the subprocess. The message is a
 condition object with class \code{callr_message}. (It typically has
 other classes, e.g. \code{cli_message} for output from the cli
-package.
+package.)
 \item \code{500}: (\code{EXITED}) The R session finished cleanly. This means
 that the evaluated expression quit R.
 \item \code{501}: (\code{CRASHED}) The R session crashed or was killed.
