@@ -22,7 +22,7 @@
 #   the error, e.g. `.Last.error$trace`. The trace of the last error is
 #   also at `.Last.error.trace`.
 # - Can merge errors and traces across multiple processes.
-# - Pretty-print errors and traces, if the crayon package is loaded.
+# - Pretty-print errors and traces, if the cli package is loaded.
 # - Automatically hides uninformative parts of the stack trace when
 #   printing.
 #
@@ -80,6 +80,27 @@
 #   error and highlight it.
 # * Add the rethrow_call_with_cleanup function, to work with embedded
 #   cleancall.
+#
+# ### 1.2.2 -- 2020-11-19
+#
+# * Add the `call` argument to `catch_rethrow()` and `rethrow()`, to be
+#   able to omit calls.
+#
+# ### 1.2.3 -- 2021-03-06
+#
+# * Use cli instead of crayon
+#
+# ### 1.2.4 -- 2021-04-01
+#
+# * Allow omitting the call with call. = FALSE in `new_cond()`, etc.
+#
+# ### 1.3.0 -- 2021-04-19
+#
+# * Avoid embedding calls in trace with embed = FALSE.
+#
+# ### 2.0.0 -- 2021-04-19
+#
+# * Versioned classes and print methods
 
 err <- local({
 
@@ -92,7 +113,7 @@ err <- local({
   #'   character and then concatenated, like in [stop()].
   #' @param call. A call object to include in the condition, or `TRUE`
   #'   or `NULL`, meaning that [throw()] should add a call object
-  #'   automatically.
+  #'   automatically. If `FALSE`, then no call is added.
   #' @param domain Translation domain, see [stop()].
   #' @return Condition object. Currently a list, but you should not rely
   #'   on that.
@@ -117,7 +138,7 @@ err <- local({
 
   new_error <- function(..., call. = TRUE, domain = NULL) {
     cond <- new_cond(..., call. = call., domain = domain)
-    class(cond) <- c("rlib_error", "error", "condition")
+    class(cond) <- c("rlib_error_2_0", "rlib_error", "error", "condition")
     cond
   }
 
@@ -143,8 +164,10 @@ err <- local({
       throw(new_error("Parent condition must be a condition object"))
     }
 
-    if (is.null(cond$call) || isTRUE(cond$call)) {
+    if (isTRUE(cond$call)) {
       cond$call <- sys.call(-1) %||% sys.call()
+    } else if (identical(cond$call, FALSE)) {
+      cond$call <- NULL
     }
 
     # Eventually the nframe numbers will help us print a better trace
@@ -212,7 +235,7 @@ err <- local({
         if (is.na(max_msg_len)) max_msg_len <- 1000
         msg <- conditionMessage(cond)
         adv <- style_advice(
-          "\nType .Last.error.trace to see where the error occured"
+          "\nType .Last.error.trace to see where the error occurred"
         )
         dots <- "\033[0m\n[...]"
         if (bytes(msg) + bytes(adv) + bytes(dots) + 5L> max_msg_len) {
@@ -266,6 +289,8 @@ err <- local({
   #'   [withCallingHandlers()]. You are supposed to call [throw()] from
   #'   the error handler, with a new error object, setting the original
   #'   error object as parent. See examples below.
+  #' @param call Logical flag, whether to add the call to
+  #'   `catch_rethrow()` to the error.
   #' @examples
   #' f <- function() {
   #'   ...
@@ -277,8 +302,8 @@ err <- local({
   #'   )
   #' }
 
-  catch_rethrow <- function(expr, ...) {
-    realcall <- sys.call(-1) %||% sys.call()
+  catch_rethrow <- function(expr, ..., call = TRUE) {
+    realcall <- if (isTRUE(call)) sys.call(-1) %||% sys.call()
     realframe <- sys.nframe()
     parent <- parent.frame()
 
@@ -316,9 +341,11 @@ err <- local({
   #' @param expr Expression to evaluate.
   #' @param ... Condition handler specification, the same way as in
   #'   [withCallingHandlers()].
+  #' @param call Logical flag, whether to add the call to
+  #'   `rethrow()` to the error.
 
-  rethrow <- function(expr, cond) {
-    realcall <- sys.call(-1) %||% sys.call()
+  rethrow <- function(expr, cond, call = TRUE) {
+    realcall <- if (isTRUE(call)) sys.call(-1) %||% sys.call()
     realframe <- sys.nframe()
     withCallingHandlers(
       expr,
@@ -357,7 +384,7 @@ err <- local({
         e$`_nframe` <- nframe
         e$call <- call
         if (inherits(e, "simpleError")) {
-          class(e) <- c("c_error", "rlib_error", "error", "condition")
+          class(e) <- c("c_error", "rlib_error_2_0", "rlib_error", "error", "condition")
         }
         e$`_ignore` <- list(c(nframe + 1L, sys.nframe() + 1L))
         throw(e)
@@ -388,7 +415,7 @@ err <- local({
         e$`_nframe` <- nframe
         e$call <- call
         if (inherits(e, "simpleError")) {
-          class(e) <- c("c_error", "rlib_error", "error", "condition")
+          class(e) <- c("c_error", "rlib_error_2_0", "rlib_error", "error", "condition")
         }
         e$`_ignore` <- list(c(nframe + 1L, sys.nframe() + 1L))
         throw(e)
@@ -404,10 +431,14 @@ err <- local({
   #' so there is currently not much use to call it directly.
   #'
   #' @param cond Condition to add the trace to
+  #' @param embed Whether to embed calls into the condition.
   #'
   #' @return A condition object, with the trace added.
 
-  add_trace_back <- function(cond) {
+  add_trace_back <- function(
+      cond,
+      embed = getOption("rlib_error_embed_calls", FALSE)) {
+
     idx <- seq_len(sys.parent(1L))
     frames <- sys.frames()[idx]
 
@@ -423,11 +454,13 @@ err <- local({
     classes <- class(cond)
     pids <- rep(cond$`_pid` %||% Sys.getpid(), length(calls))
 
+    if (!embed) calls <- as.list(format_calls(calls, topenvs, nframes))
+
     if (is.null(cond$parent)) {
       # Nothing to do, no parent
 
     } else if (is.null(cond$parent$trace) ||
-               !inherits(cond$parent, "rlib_error")) {
+               !inherits(cond$parent, "rlib_error_2_0")) {
       # If the parent does not have a trace, that means that it is using
       # the same trace as us. We ignore traces from non-r-lib errors.
       # E.g. rlang errors have a trace, but we do not use that.
@@ -471,7 +504,7 @@ err <- local({
       list(calls = calls, parents = parents, envs = envs, topenvs = topenvs,
            indices = indices, nframes = nframes, messages = messages,
            ignore = ignore, classes = classes, pids = pids),
-      class = "rlib_trace")
+      class = c("rlib_trace_2_0", "rlib_trace"))
   }
 
   env_label <- function(env) {
@@ -537,19 +570,27 @@ err <- local({
     invisible(x)
   }
 
-  print_rlib_error <- function(x, ...) {
+  print_rlib_error_2_0 <- function(x, ...) {
     print_this(x, ...)
     print_parents(x, ...)
   }
 
-  print_rlib_trace <- function(x, ...) {
+  format_calls <- function(calls, topenv, nframes, messages = NULL) {
+    calls <- map2(calls, topenv, namespace_calls)
+    callstr <- vapply(calls, format_call_src, character(1))
+    if (!is.null(messages)) {
+      callstr[nframes] <-
+        paste0(callstr[nframes], "\n", style_error_msg(messages), "\n")
+    }
+    callstr
+  }
+
+  print_rlib_trace_2_0 <- function(x, ...) {
     cl <- paste0(" Stack trace:")
     cat(sep = "", "\n", style_trace_title(cl), "\n\n")
-    calls <- map2(x$calls, x$topenv, namespace_calls)
-    callstr <- vapply(calls, format_call_src, character(1))
-    callstr[x$nframes] <-
-      paste0(callstr[x$nframes], "\n", style_error_msg(x$messages), "\n")
-    callstr <- enumerate(callstr)
+    callstr <- enumerate(
+      format_calls(x$calls, x$topenv, x$nframes, x$messages)
+    )
 
     # Ignore what we were told to ignore
     ign <- integer()
@@ -581,8 +622,8 @@ err <- local({
   }
 
   capture_output <- function(expr) {
-    if (has_crayon()) {
-      opts <- options(crayon.enabled = crayon::has_color())
+    if (has_cli()) {
+      opts <- options(cli.num_colors = cli::num_ansi_colors())
       on.exit(options(opts), add = TRUE)
     }
 
@@ -615,8 +656,8 @@ err <- local({
   onload_hook <- function() {
     reg_env <- Sys.getenv("R_LIB_ERROR_REGISTER_PRINT_METHODS", "TRUE")
     if (tolower(reg_env) != "false") {
-      registerS3method("print", "rlib_error", print_rlib_error, baseenv())
-      registerS3method("print", "rlib_trace", print_rlib_trace, baseenv())
+      registerS3method("print", "rlib_error_2_0", print_rlib_error_2_0, baseenv())
+      registerS3method("print", "rlib_trace_2_0", print_rlib_trace_2_0, baseenv())
     }
   }
 
@@ -689,22 +730,22 @@ err <- local({
 
   # -- printing, styles -------------------------------------------------
 
-  has_crayon <- function() "crayon" %in% loadedNamespaces()
+  has_cli <- function() "cli" %in% loadedNamespaces()
 
   style_numbers <- function(x) {
-    if (has_crayon()) crayon::silver(x) else x
+    if (has_cli()) cli::col_silver(x) else x
   }
 
   style_advice <- function(x) {
-    if (has_crayon()) crayon::silver(x) else x
+    if (has_cli()) cli::col_silver(x) else x
   }
 
   style_srcref <- function(x) {
-    if (has_crayon()) crayon::italic(crayon::cyan(x))
+    if (has_cli()) cli::style_italic(cli::col_cyan(x))
   }
 
   style_error <- function(x) {
-    if (has_crayon()) crayon::bold(crayon::red(x)) else x
+    if (has_cli()) cli::style_bold(cli::col_red(x)) else x
   }
 
   style_error_msg <- function(x) {
@@ -717,15 +758,15 @@ err <- local({
   }
 
   style_process <- function(x) {
-    if (has_crayon()) crayon::bold(x) else x
+    if (has_cli()) cli::style_bold(x) else x
   }
 
   style_call <- function(x) {
-    if (!has_crayon()) return(x)
+    if (!has_cli()) return(x)
     call <- sub("^([^(]+)[(].*$", "\\1", x)
     rest <- sub("^[^(]+([(].*)$", "\\1", x)
     if (call == x || rest == x) return(x)
-    paste0(crayon::yellow(call), rest)
+    paste0(cli::col_yellow(call), rest)
   }
 
   err_env <- environment()
