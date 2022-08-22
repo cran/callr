@@ -10,7 +10,7 @@ It is sometimes useful to perform a computation in a separate
 R process, without affecting the current R process at all.  This
 packages does exactly that.
 }
-\details{
+\section{callr}{
 \subsection{Features}{
 \itemize{
 \item Calls an R function, with arguments, in a subprocess.
@@ -39,9 +39,16 @@ Use \code{r()} to run an R function in a new R process.
 The results are passed back seamlessly:
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{callr::r(function() var(iris[, 1:4]))
-}\if{html}{\out{</div>}}
+}\if{html}{\out{</div>}}\if{html}{\out{
+<div class="asciicast" style="color: #172431;font-family: 'Fira Code',Monaco,Consolas,Menlo,'Bitstream Vera Sans Mono','Powerline Symbols',monospace;line-height: 1.300000"><pre>
+#>              Sepal.Length Sepal.Width Petal.Length Petal.Width                  
+#> Sepal.Length    0.6856935  -0.0424340    1.2743154   0.5162707                  
+#> Sepal.Width    -0.0424340   0.1899794   -0.3296564  -0.1216394                  
+#> Petal.Length    1.2743154  -0.3296564    3.1162779   1.2956094                  
+#> Petal.Width     0.5162707  -0.1216394    1.2956094   0.5810063                  
+</pre></div>
+}}
 
-\figure{simple.svg}
 \subsection{Passing arguments}{
 
 You can pass arguments to the function by setting \code{args} to the list of arguments.
@@ -50,17 +57,33 @@ For example, the following does not work:
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{mycars <- cars
 callr::r(function() summary(mycars))
-}\if{html}{\out{</div>}}
+}\if{html}{\out{</div>}}\if{html}{\out{
+<div class="asciicast" style="color: #172431;font-family: 'Fira Code',Monaco,Consolas,Menlo,'Bitstream Vera Sans Mono','Powerline Symbols',monospace;line-height: 1.300000"><pre>
+#> <span style="font-weight: bold;;color: #B58900">Error</span>:                                                                          
+#> <span style="color: #B58900">!</span> error in callr subprocess                                                     
+#> <span style="font-weight: bold;">Caused by error</span> in `summary(mycars)`:                                           
+#> <span style="color: #B58900">!</span> object 'mycars' not found                                                     
+#> <span style="color: #002B36">Type .Last.error to see the more details.</span>                                       
+</pre></div>
+}}
 
-\figure{passargsfail.svg}
 
 But this does:
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{mycars <- cars
 callr::r(function(x) summary(x), args = list(mycars))
-}\if{html}{\out{</div>}}
+}\if{html}{\out{</div>}}\if{html}{\out{
+<div class="asciicast" style="color: #172431;font-family: 'Fira Code',Monaco,Consolas,Menlo,'Bitstream Vera Sans Mono','Powerline Symbols',monospace;line-height: 1.300000"><pre>
+#>      speed           dist                                                       
+#>  Min.   : 4.0   Min.   :  2.00                                                  
+#>  1st Qu.:12.0   1st Qu.: 26.00                                                  
+#>  Median :15.0   Median : 36.00                                                  
+#>  Mean   :15.4   Mean   : 42.98                                                  
+#>  3rd Qu.:19.0   3rd Qu.: 56.00                                                  
+#>  Max.   :25.0   Max.   :120.00                                                  
+</pre></div>
+}}
 
-\figure{passargsok.svg}
 
 Note that the arguments will be serialized and saved to a file, so if they are large R objects, it might take a long time for the child process to start up.
 }
@@ -71,9 +94,12 @@ You can use any R package in the child process, just make sure to refer to it ex
 For example, the following code creates an \href{https://github.com/igraph/rigraph}{igraph} graph in the child, and calculates some metrics of it.
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{callr::r(function() \{ g <- igraph::sample_gnp(1000, 4/1000); igraph::diameter(g) \})
-}\if{html}{\out{</div>}}
+}\if{html}{\out{</div>}}\if{html}{\out{
+<div class="asciicast" style="color: #172431;font-family: 'Fira Code',Monaco,Consolas,Menlo,'Bitstream Vera Sans Mono','Powerline Symbols',monospace;line-height: 1.300000"><pre>
+#> [1] 11                                                                          
+</pre></div>
+}}
 
-\figure{packages.svg}
 }
 
 \subsection{Error handling}{
@@ -81,15 +107,40 @@ For example, the following code creates an \href{https://github.com/igraph/rigra
 callr copies errors from the child process back to the main R session:
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{callr::r(function() 1 + "A")
-}\if{html}{\out{</div>}}
+}\if{html}{\out{</div>}}\if{html}{\out{
+<div class="asciicast" style="color: #172431;font-family: 'Fira Code',Monaco,Consolas,Menlo,'Bitstream Vera Sans Mono','Powerline Symbols',monospace;line-height: 1.300000"><pre>
+#> <span style="font-weight: bold;;color: #B58900">Error</span>:                                                                          
+#> <span style="color: #B58900">!</span> error in callr subprocess                                                     
+#> <span style="font-weight: bold;">Caused by error</span> in `1 + "A"`:                                                   
+#> <span style="color: #B58900">!</span> non-numeric argument to binary operator                                       
+#> <span style="color: #002B36">Type .Last.error to see the more details.</span>                                       
+</pre></div>
+callr sets the `.Last.error` variable, and after an error you can inspect this for more details about the error, including stack traces both from the main R process and the subprocess.
+}}
 
-\figure{error1.svg}
-callr sets the \code{.Last.error} variable, and after an error you can inspect this for more details about the error, including stack traces both from the main R process and the subprocess.
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{.Last.error
-}\if{html}{\out{</div>}}
+}\if{html}{\out{</div>}}\if{html}{\out{
+<div class="asciicast" style="color: #172431;font-family: 'Fira Code',Monaco,Consolas,Menlo,'Bitstream Vera Sans Mono','Powerline Symbols',monospace;line-height: 1.300000"><pre>
+#> <span style="color: #268BD2">&lt;callr_error/rlib_error_3_0/rlib_error/error&gt;</span>                                   
+#> <span style="font-weight: bold;;color: #B58900">Error</span>:                                                                          
+#> <span style="color: #B58900">!</span> error in callr subprocess                                                     
+#> <span style="font-weight: bold;">Caused by error</span> in `1 + "A"`:                                                   
+#> <span style="color: #B58900">!</span> non-numeric argument to binary operator                                       
+#> ---                                                                             
+#> Backtrace:                                                                      
+#> <span style="color: #002B36">1. </span>callr::<span style="color: #2AA198">r</span><span style="color: #B58900">(</span><span style="color: #DC322F">function</span><span style="color: #268BD2">()</span> <span style="color: #268BD2">1</span> <span style="color: #859900">+</span> <span style="color: #B58900">"A")</span>                                                 
+#> <span style="color: #002B36">2. </span>callr:::<span style="color: #2AA198">get_result</span><span style="color: #B58900">(</span>output = out, options<span style="color: #B58900">)</span><span style="color: #002B36"> at eval.R:189:3</span>                    
+#> <span style="color: #002B36">3. </span>callr:::<span style="color: #2AA198">throw</span><span style="color: #B58900">(</span><span style="color: #2AA198">callr_remote_error</span><span style="color: #268BD2">(</span>remerr<span style="color: #268BD2">)</span><span style="color: #B58900">)</span><span style="color: #002B36"> at result.R:67:5</span>                   
+#> <span style="color: #002B36">4. </span>callr:::<span style="color: #2AA198">callr_remote_error</span><span style="color: #B58900">(</span>remerr<span style="color: #B58900">)</span><span style="color: #002B36"> at result.R:67:5</span>                          
+#> <span style="color: #002B36">5. </span>callr:::<span style="color: #2AA198">throw</span><span style="color: #B58900">(</span>err, parent = remerr<span style="color: #268BD2">[[3]]</span><span style="color: #B58900">)</span><span style="color: #002B36"> at error.R:44:3</span>                     
+#> ---                                                                             
+#> Subprocess backtrace:                                                           
+#> <span style="color: #002B36">1. </span>base::.handleSimpleError(function (e) …                                      
+#> <span style="color: #002B36">2. </span>global <span style="color: #2AA198">h</span><span style="color: #B58900">(</span><span style="color: #2AA198">simpleError</span><span style="color: #268BD2">(</span>msg, call<span style="color: #268BD2">)</span><span style="color: #B58900">)</span>                                             
+</pre></div>
+}}
 
-\figure{error2-2.svg}
 
 The error objects has two parts.
 The first belongs to the main process, and the second belongs to the subprocess.
@@ -107,14 +158,20 @@ By default, the standard output and error of the child is lost, but you can requ
   stdout = "/tmp/out", stderr = "/tmp/err"
 )
 readLines("/tmp/out")
-}\if{html}{\out{</div>}}
+}\if{html}{\out{</div>}}\if{html}{\out{
+<div class="asciicast" style="color: #172431;font-family: 'Fira Code',Monaco,Consolas,Menlo,'Bitstream Vera Sans Mono','Powerline Symbols',monospace;line-height: 1.300000"><pre>
+#> [1] "[1] \\"hello world!\\""                                                      
+</pre></div>
+}}
 
-\figure{io.svg}
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{readLines("/tmp/err")
-}\if{html}{\out{</div>}}
+}\if{html}{\out{</div>}}\if{html}{\out{
+<div class="asciicast" style="color: #172431;font-family: 'Fira Code',Monaco,Consolas,Menlo,'Bitstream Vera Sans Mono','Powerline Symbols',monospace;line-height: 1.300000"><pre>
+#> [1] "hello again!"                                                              
+</pre></div>
+}}
 
-\figure{unnamed-chunk-3.svg}
 
 With the \code{stdout} option, the standard output is collected and can be examined once the child process finished.
 The \code{show = TRUE} options will also show the output of the child, as it is printed, on the console of the parent.
@@ -129,16 +186,38 @@ It returns an \code{r_process} R6 object, that provides a rich API:
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{rp <- callr::r_bg(function() Sys.sleep(.2))
 rp
-}\if{html}{\out{</div>}}
+}\if{html}{\out{</div>}}\if{html}{\out{
+<div class="asciicast" style="color: #172431;font-family: 'Fira Code',Monaco,Consolas,Menlo,'Bitstream Vera Sans Mono','Powerline Symbols',monospace;line-height: 1.300000"><pre>
+#> PROCESS 'R', running, pid 57164.                                                
+</pre></div>
+}}
 
-\figure{bg.svg}
 
 This is a list of all \code{r_process} methods:
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{ls(rp)
-}\if{html}{\out{</div>}}
+}\if{html}{\out{</div>}}\if{html}{\out{
+<div class="asciicast" style="color: #172431;font-family: 'Fira Code',Monaco,Consolas,Menlo,'Bitstream Vera Sans Mono','Powerline Symbols',monospace;line-height: 1.300000"><pre>
+#>  [1] "as_ps_handle"          "clone"                 "finalize"                 
+#>  [4] "format"                "get_cmdline"           "get_cpu_times"            
+#>  [7] "get_error_connection"  "get_error_file"        "get_exe"                  
+#> [10] "get_exit_status"       "get_input_connection"  "get_input_file"           
+#> [13] "get_memory_info"       "get_name"              "get_output_connection"    
+#> [16] "get_output_file"       "get_pid"               "get_poll_connection"      
+#> [19] "get_result"            "get_start_time"        "get_status"               
+#> [22] "get_username"          "get_wd"                "has_error_connection"     
+#> [25] "has_input_connection"  "has_output_connection" "has_poll_connection"      
+#> [28] "initialize"            "interrupt"             "is_alive"                 
+#> [31] "is_incomplete_error"   "is_incomplete_output"  "is_supervised"            
+#> [34] "kill"                  "kill_tree"             "poll_io"                  
+#> [37] "print"                 "read_all_error"        "read_all_error_lines"     
+#> [40] "read_all_output"       "read_all_output_lines" "read_error"               
+#> [43] "read_error_lines"      "read_output"           "read_output_lines"        
+#> [46] "resume"                "signal"                "supervise"                
+#> [49] "suspend"               "wait"                  "write_input"              
+</pre></div>
+}}
 
-\figure{bg-methods.svg}
 
 These include all methods of the \code{processx::process} superclass and the new \code{get_result()} method, to retrieve the R object returned by the function call.
 Some of the handiest methods are:
@@ -164,24 +243,46 @@ The timeout is in milliseconds.
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{rp1 <- callr::r_bg(function() \{ Sys.sleep(1/2); "1 done" \})
 rp2 <- callr::r_bg(function() \{ Sys.sleep(1/1000); "2 done" \})
 processx::poll(list(rp1, rp2), 1000)
-}\if{html}{\out{</div>}}
+}\if{html}{\out{</div>}}\if{html}{\out{
+<div class="asciicast" style="color: #172431;font-family: 'Fira Code',Monaco,Consolas,Menlo,'Bitstream Vera Sans Mono','Powerline Symbols',monospace;line-height: 1.300000"><pre>
+#> [[1]]                                                                           
+#>   output    error  process                                                      
+#> "silent" "silent" "silent"                                                      
+#>                                                                                 
+#> [[2]]                                                                           
+#>  output   error process                                                         
+#> "ready" "ready" "ready"                                                         
+#>                                                                                 
+</pre></div>
+}}
 
-\figure{poll.svg}
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{rp2$get_result()
-}\if{html}{\out{</div>}}
+}\if{html}{\out{</div>}}\if{html}{\out{
+<div class="asciicast" style="color: #172431;font-family: 'Fira Code',Monaco,Consolas,Menlo,'Bitstream Vera Sans Mono','Powerline Symbols',monospace;line-height: 1.300000"><pre>
+#> [1] "2 done"                                                                    
+</pre></div>
+}}
 
-\figure{poll-2.svg}
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{processx::poll(list(rp1), 1000)
-}\if{html}{\out{</div>}}
+}\if{html}{\out{</div>}}\if{html}{\out{
+<div class="asciicast" style="color: #172431;font-family: 'Fira Code',Monaco,Consolas,Menlo,'Bitstream Vera Sans Mono','Powerline Symbols',monospace;line-height: 1.300000"><pre>
+#> [[1]]                                                                           
+#>  output   error process                                                         
+#> "ready" "ready" "ready"                                                         
+#>                                                                                 
+</pre></div>
+}}
 
-\figure{poll-3.svg}
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{rp1$get_result()
-}\if{html}{\out{</div>}}
+}\if{html}{\out{</div>}}\if{html}{\out{
+<div class="asciicast" style="color: #172431;font-family: 'Fira Code',Monaco,Consolas,Menlo,'Bitstream Vera Sans Mono','Powerline Symbols',monospace;line-height: 1.300000"><pre>
+#> [1] "1 done"                                                                    
+</pre></div>
+}}
 
-\figure{poll-4.svg}
 }
 
 \subsection{Persistent R sessions}{
@@ -190,9 +291,12 @@ processx::poll(list(rp1, rp2), 1000)
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{rs <- callr::r_session$new()
 rs
-}\if{html}{\out{</div>}}
+}\if{html}{\out{</div>}}\if{html}{\out{
+<div class="asciicast" style="color: #172431;font-family: 'Fira Code',Monaco,Consolas,Menlo,'Bitstream Vera Sans Mono','Powerline Symbols',monospace;line-height: 1.300000"><pre>
+#> R SESSION, alive, idle, pid 57198.                                              
+</pre></div>
+}}
 
-\figure{rsession.svg}
 
 \code{r_session$run()} is a synchronous call, that works similarly to \code{r()}, but uses the persistent session.
 \code{r_session$call()} starts the function call and returns immediately.
@@ -202,25 +306,58 @@ Once an R session is done with an asynchronous computation, its \code{poll_proce
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{rs <- callr::r_session$new()
 rs$run(function() runif(10))
-}\if{html}{\out{</div>}}
+}\if{html}{\out{</div>}}\if{html}{\out{
+<div class="asciicast" style="color: #172431;font-family: 'Fira Code',Monaco,Consolas,Menlo,'Bitstream Vera Sans Mono','Powerline Symbols',monospace;line-height: 1.300000"><pre>
+#>  [1] 0.9694117 0.1148252 0.7002372 0.5020423 0.6733614 0.2834034 0.4684455      
+#>  [8] 0.2777103 0.3983423 0.3311824                                              
+</pre></div>
+}}
 
-\figure{rsession2.svg}
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{rs$call(function() rnorm(10))
 rs
-}\if{html}{\out{</div>}}
+}\if{html}{\out{</div>}}\if{html}{\out{
+<div class="asciicast" style="color: #172431;font-family: 'Fira Code',Monaco,Consolas,Menlo,'Bitstream Vera Sans Mono','Powerline Symbols',monospace;line-height: 1.300000"><pre>
+#> R SESSION, alive, busy, pid 57202.                                              
+</pre></div>
+}}
 
-\figure{rsession2-2.svg}
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{rs$poll_process(2000)
-}\if{html}{\out{</div>}}
+}\if{html}{\out{</div>}}\if{html}{\out{
+<div class="asciicast" style="color: #172431;font-family: 'Fira Code',Monaco,Consolas,Menlo,'Bitstream Vera Sans Mono','Powerline Symbols',monospace;line-height: 1.300000"><pre>
+#> [1] "ready"                                                                     
+</pre></div>
+}}
 
-\figure{rsession-4.svg}
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{rs$read()
-}\if{html}{\out{</div>}}
+}\if{html}{\out{</div>}}\if{html}{\out{
+<div class="asciicast" style="color: #172431;font-family: 'Fira Code',Monaco,Consolas,Menlo,'Bitstream Vera Sans Mono','Powerline Symbols',monospace;line-height: 1.300000"><pre>
+#> $code                                                                           
+#> [1] 200                                                                         
+#>                                                                                 
+#> $message                                                                        
+#> [1] "done callr-rs-result-df023a1ea239"                                         
+#>                                                                                 
+#> $result                                                                         
+#>  [1] -0.120592200  1.064599579  0.411464719  0.003468047  1.217852929           
+#>  [6]  0.619740451 -0.384256042 -0.727031228 -1.054600334 -0.605265817           
+#>                                                                                 
+#> $stdout                                                                         
+#> [1] ""                                                                          
+#>                                                                                 
+#> $stderr                                                                         
+#> [1] ""                                                                          
+#>                                                                                 
+#> $error                                                                          
+#> NULL                                                                            
+#>                                                                                 
+#> attr(,"class")                                                                  
+#> [1] "callr_session_result"                                                      
+</pre></div>
+}}
 
-\figure{rsession-5.svg}
 }
 
 \subsection{Running \verb{R CMD} commands}{
@@ -229,9 +366,29 @@ The \code{rcmd()} function calls an \verb{R CMD} command.
 For example, you can call \verb{R CMD INSTALL}, \verb{R CMD check} or \verb{R CMD config} this way:
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{callr::rcmd("config", "CC")
-}\if{html}{\out{</div>}}
+}\if{html}{\out{</div>}}\if{html}{\out{
+<div class="asciicast" style="color: #172431;font-family: 'Fira Code',Monaco,Consolas,Menlo,'Bitstream Vera Sans Mono','Powerline Symbols',monospace;line-height: 1.300000"><pre>
+#> $status                                                                         
+#> [1] 0                                                                           
+#>                                                                                 
+#> $stdout                                                                         
+#> [1] "clang -arch arm64\\n"                                                       
+#>                                                                                 
+#> $stderr                                                                         
+#> [1] ""                                                                          
+#>                                                                                 
+#> $timeout                                                                        
+#> [1] FALSE                                                                       
+#>                                                                                 
+#> $command                                                                        
+#> [1] "/Library/Frameworks/R.framework/Versions/4.2-arm64/Resources/bin/R"        
+#> [2] "CMD"                                                                       
+#> [3] "config"                                                                    
+#> [4] "CC"                                                                        
+#>                                                                                 
+</pre></div>
+}}
 
-\figure{rcmd.svg}
 
 This returns a list with three components: the standard output, the standard error, and the exit (status) code of the \verb{R CMD} command.
 }
@@ -248,6 +405,7 @@ By contributing to this project, you agree to abide by its terms.
 MIT © Mango Solutions, RStudio
 }
 }
+
 \seealso{
 Useful links:
 \itemize{
