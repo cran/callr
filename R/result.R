@@ -20,7 +20,7 @@ get_result <- function(output, options) {
   res <- options$result_file
 
   ## Timeout?
-  if (output$timeout) throw(new_callr_error(output))
+  if (output$timeout) throw(new_callr_crash_error(output))
 
   ## No output file and no error file? Some other (system?) error then,
   ## unless exit status was zero, which is probably just quit().
@@ -32,7 +32,7 @@ get_result <- function(output, options) {
     "has crashed or was killed")
   if (! file.exists(res) && ! file.exists(errorres)) {
     if (is.na(output$status) || output$status != 0) {
-      throw(new_callr_error(output, killmsg))
+      throw(new_callr_crash_error(output, killmsg))
     } else  {
       return(ret)
     }
@@ -48,7 +48,12 @@ get_result <- function(output, options) {
       ret <- readRDS(res),
       error = function(e) {
         if (is.na(output$status) || output$status != 0) {
-          throw(new_callr_error(output, killmsg))
+          throw(new_callr_crash_error(output, killmsg))
+        } else {
+          throw(new_callr_crash_error(
+            output,
+            "could not read result from callr"
+          ))
         }
       }
     )
@@ -56,26 +61,33 @@ get_result <- function(output, options) {
     return(ret)
   }
 
+  # To work around an errors.R bug, if the format method is registered
+  # from another package. errors.R expects that the parent error has a
+  # message, but if it is an interrupt (and perhaps some other rare cases),
+  # it does not.
+  fix_msg <- function(cnd) {
+    if (is.null(cnd$message)) {
+      if (inherits(cnd, "interrupt")) {
+        cnd$message <- "interrupt"
+      } else {
+        cnd$message <- ""
+      }
+    }
+    cnd
+  }
+
   ## The error RDS might be corrupt, too, if we crashed/got killed after
   ## an error
   tryCatch(
     remerr <- readRDS(errorres),
-    error = function(e) throw(new_callr_error(output, killmsg))
+    error = function(e) throw(new_callr_crash_error(output, killmsg))
   )
 
   if (remerr[[1]] == "error") {
-    throw(callr_remote_error(remerr))
+    throw(callr_remote_error(remerr, output), parent = fix_msg(remerr[[3]]))
 
   } else if (remerr[[1]] == "stack") {
-    myerr <- structure(
-      list(
-        message = conditionMessage(remerr[[2]]),
-        call = conditionCall(remerr[[2]]),
-        stack = clean_stack(remerr[[3]])
-      ),
-      class = c("callr_error", "error", "condition")
-    )
-    throw(myerr)
+    throw(callr_remote_error_with_stack(remerr, output), parent = fix_msg(remerr[[2]]))
 
   } else if (remerr[[1]] == "debugger") {
     utils::debugger(clean_stack(remerr[[3]]))

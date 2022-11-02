@@ -309,7 +309,7 @@ rs_init <- function(self, private, super, options, wait, wait_timeout) {
           stderr = err,
           timeout = FALSE
         )
-        throw(new_callr_error(data, "Failed to start R session"))
+        throw(new_callr_crash_error(data, "Failed to start R session"))
       }
     } else if (pr["process"] != "ready") {
       cat("stdout:]\n", out, "\n")
@@ -463,7 +463,8 @@ rs_call <- function(self, private, func, args, package) {
                                    private$options$result_file,
                                    private$options$error,
                                    pre_hook = pre, post_hook = post,
-                                   messages = TRUE)
+                                   messages = TRUE,
+                                   print_error = FALSE)
   cmd <- paste0(deparse(expr), "\n")
 
   ## Write this to stdin
